@@ -2,6 +2,7 @@ Note:
 -----
 YOU MUST use the tx client to create a translations/ subdirectory
 (or make a symlink named translations to that subdirectory).
+We look for all the .po files under that subdirectory.
 
 
 Introduction
