@@ -1,0 +1,208 @@
+#!/bin/bash
+
+: ${COPYRIGHT_HOLDER:=antiX and Mepis}
+:     ${PACKAGE_NAME:=antiX Development}
+:          ${BUGS_TO:=bitjam@gmail.com}
+:   ${COPYRIGHT_YEAR:=2012 -- $(date +%Y)}
+
+
+ME=${0##*/}
+MY_DIR=$(dirname $(readlink -f $0))
+
+        CMD_FULL_LANG=$MY_DIR/full-language
+
+usage() {
+    ret=${1:-0}
+    cat <<Usage
+Usage: $ME [options] file1 file2 ...
+
+FIXME:
+Options:
+  -b --bugs-to=        Where to send msgid bugs     : $BUGS_TO
+  -c --copyright=      Copyright owner              : $COPYRIGHT_HOLDER
+  -d --domain=         Name of the program          --auto--
+  -h --help            Show this help
+  -f --force   
+  -l --language=       Language (po files only)     --auto--
+  -p --package=        Name of the package          : $PACKAGE_NAME
+  -P --pretend         Don't touch the files
+  -q --quiet           Only print errors/warnings
+  -s --swap            Assume <lang>/<domain>.po
+  -t --title=          Title (first line)        pot: $POT_TITLE
+                                                  po: $PO_TITLE
+  -T --test            Don't change the files
+  -v --verbose         Print more
+  -V --VERBOSE         Print even more
+  -y --year=           Year or years of copyright   : $COPYRIGHT_YEAR
+Usage
+    exit $ret
+}
+
+
+main() {
+
+    local short_stack="bcdfhlpPqstTyvV" arg val
+    while [ $# -gt 0 -a -z "${1##-*}" ]; do
+        arg=${1#-}; shift
+
+        # Unstack single-letter options
+        case $arg in
+            [$short_stack][$short_stack]*)
+                if echo "$arg" | grep -q "^[$short_stack]\+$"; then
+                    set -- $(echo $arg | sed -r 's/([a-zA-Z])/ -\1 /g') "$@"
+                    continue
+                fi;;
+        esac
+
+        # Deal with all options that take a parameter
+        case $arg in
+        -bugs-to|-copyright|-domain|-language|-package|-title|-year|[bcdlpty]) 
+            [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
+            val=$1
+            [ -n "$val" -a -z "${val##-*}" ] \
+                && fatal "Suspicious argument after -$arg: $(pqw $val)"
+            shift           ;;
+        *=*)  val=${arg#*=} ;;
+        *)  val="???"       ;;
+        esac
+
+        case $arg in
+            -bugs-to|-bugs-to=*|b=*|b) BUGS_TO=$val          ;;
+        -copyright|-copyright=*|c=*|c) COPYRIGHT_HOLDER=$val ;;
+            -domains|-domains=*|d=*|d) USR_DOMAIN=$val       ;;
+                             -force|f) FORCE=true            ;;
+                              -help|h) DO_USAGE=true         ;;
+          -language|-language=*|l=*|l) USR_LANGUAGE=$val     ;;
+            -package|-package=^|p=*|p) PACKAGE_NAME=$val     ;;
+                           -pretend|P) PRETEND_MODE=true     ;;
+                             -quiet|q) QUIET=true            ;;
+                              -swap|s) DO_SWAP=true          ;;
+                              -test|T) TEST_MODE=true        ;;
+                -title|-title=*|t=*|t) TITLE=$val            ;;
+                           -verbose|v) VERBOSE=true          ;;
+                           -VERBOSE|V) VERY_VERBOSE=true     ;;
+
+                         *) fatal "Unknown parameter -$arg"  ;;
+        esac 
+    done
+
+    : ${POT_TITLE:=Translation for $PACKAGE_NAME: %s file}
+    : ${PO_TITLE:=%s translation for $PACKAGE_NAME: %s file}
+
+    [ "$DO_USAGE" ] && usage
+
+    local full_name domain
+    for full_file; do
+
+        local bname=$(basename $full_file)
+        local ext=${bname##*.}
+        local lang= language= title
+
+        case $ext in
+            po) domain=$(basename $(dirname $full_file))
+                lang=$(basename $full_file .po)
+                title=${TITLE:-$PO_TITLE} ;;
+
+           pot) domain=$(basename $bname .pot) 
+                title=${TITLE:-$POT_TITLE} ;;
+
+             *) warn "Unrecognized extension: .$ext.  Must be .po or .pot"
+                continue;;
+        esac
+
+        if [ "$DO_SWAP" ]; then
+            local temp=$domain
+            domain=$lang
+            lang=$temp
+        fi
+             
+        [ -z "$domain" ] && warn "No domain found for $full_file" \
+            && continue
+
+        [ -n "$lang" -a -x $CMD_FULL_LANG ] && language=$($CMD_FULL_LANG -e $lang)
+        [ -n "$lang" ] && : ${language:=$lang????}
+
+        vsay "    file: $full_file"
+        say  "  domain: $domain"
+        [ $ext = po ] && vsay "    lang: $lang"
+        [ $ext = po ] && vsay "language: $language"
+        vsay ""
+
+        if [ -z "$title" ]; then
+            :
+        elif [ -n "$language" -a -z "${title##*%s*%s*}" ]; then
+            title=$(printf "$title" "$language" "$domain")
+
+        elif [ -z "${title##*%s*}" ]; then
+            title=$(printf "$title" "$domain")
+        fi
+
+        [ "$PRETEND_MODE" ] && continue
+
+        local match_title="s|^#\s+SOME\sDESCRIPTIVE\sTITLE|"
+        [ "$FORCE" ] && match_title="1 s|#.*|"
+        # Bleah
+
+        local inplace="-i"  
+        [ "$TEST_MODE" ] && inplace=
+
+        sed -r $inplace \
+            -e "$match_title\# $title|" \
+            -e "s|^(#\s+Copyright.*)YEAR.*|\1$COPYRIGHT_YEAR $COPYRIGHT_HOLDER|" \
+            -e "s|^(#\s+This file is distributed.*)PACKAGE(.*)|\1$PACKAGE_NAME\2|" \
+            -e 's|^(".*charset=)CHARSET|\1UTF-8|' \
+            $full_file | head -n19
+
+        [ -z "$lang" -o -n "$TEST_MODE" ] && continue
+        sed -r -i 's/^(\"Language:).*(\\n")/\1 '"$lang"'\2/' $full_file
+    done
+}
+
+verify_lang() {
+    :
+   case $lang in
+        aa|ab|ae|af|ak|am|an|ar|as|av|ay|az|ba|be|bg|bh|bi|bm|bn|bo) ;;
+        br|bs|ca|ce|ch|co|cr|cs|cu|cv|cy|da|de|dv|dz|ee|el|en|eo|es) ;;
+        et|eu|fa|ff|\fi|fj|fo|fr|fy|ga|gd|gl|gn|gu|gv|ha|he|hi|ho|hr) ;;
+        ht|hu|hy|hz|ia|id|ie|ig|ii|ik|io|is|it|iu|ja|jv|ka|kg|ki|kj) ;;
+        kk|kl|km|kn|ko|kr|ks|ku|kv|kw|ky|la|lb|lg|li|ln|lo|lt|lu|lv) ;;
+        mg|mh|mi|mk|ml|mn|mr|ms|mt|my|na|nb|nd|ne|ng|nl|nn|no|nr|nv) ;;
+        ny|oc|oj|om|or|os|pa|pi|pl|ps|pt|qu|rm|rn|ro|ru|rw|sa|sc|sd) ;;
+        se|sg|si|sk|sl|sm|sn|so|sq|sr|ss|st|su|sv|sw|ta|te|tg|th|ti) ;;
+        tk|tl|tn|to|tr|ts|tt|tw|ty|ug|uk|ur|uz|ve|vi|vo|wa|wo|xh|yi) ;;
+        yo|za|zh|zu) ;;
+        *) lang= ;;
+    esac    
+}
+
+fatal() {
+    printf "$ME: fatal error: $@" >&2
+    echo
+    exit 2
+}
+
+warn() {
+    printf "$ME: warning: $@" >&2
+    echo
+    return 0
+}
+
+say() {
+    [ "$QUIET" ] && return
+    printf "$@"
+    echo
+}
+
+vsay() {
+    [ -n "$VERBOSE" -o -n "$VERY_VERBOSE" ] || return
+    printf "$@"
+    echo
+}
+
+vvsay() {
+    [ -n "$VERY_VERBOSE" ] || return
+    printf "$@"
+    echo
+}
+
+main "$@"

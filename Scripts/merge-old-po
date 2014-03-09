@@ -1,0 +1,39 @@
+#!/bin/bash
+
+
+ME=${0##*/}
+usage() {
+    ret=${1:-0}
+    cat <<Usage
+Usage: $ME pot-file po-files
+    
+Usage
+    exit $ret
+}
+
+main() {
+    [ $# -ge 2 ] || fatal  "Must specify a pot file and po files"
+    local pot_file=$1
+    shift
+
+    local domain=$(basename $pot_file .pot)
+    local dir=new-po/$domain
+    [ -e $dir -a ! -d $dir ] && fatal "$dir exists and is not a directory"
+    mkdir -p $dir
+
+    local lang po_file
+    for po_file; do
+        lang=$(basename $po_file .po)
+        new_po=$dir/$lang.po
+        cp $po_file $new_po
+        msgmerge -v -U -N $new_po $pot_file
+    done
+}
+
+fatal() {
+    printf "$ME: fatal error: $@" >&2
+    echo
+    exit 2
+}
+
+main "$@"

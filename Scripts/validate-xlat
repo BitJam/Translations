@@ -1,0 +1,201 @@
+#!/bin/bash
+
+      ME=$(basename $0)
+
+DIFF_OPTS="-w -U 0"
+VERBOSE=
+  QUIET=
+    EXT=".xlat"
+
+ CHECKED=0
+FAILED=0
+PASSED=0
+
+TEMP_DIR=/tmp/$(basename $0 .sh)
+
+usage() {
+    local ret=${1:-0}
+    cat <<Usage
+Usage: $ME [options] file file dir ...
+
+Check validity of .xlat shell scripts by sourcing the script and
+then regenerating it and comparing the copy with the original.
+Any difference indicate something is wrong when reading the
+script, likely the problem is related to problems with the
+shell reading unicode.
+
+Checks all files given on the command line.  If a directory is
+given then check all .xlat files found under that directory.
+
+Options:
+    -c --clean    Remove old temp files
+    -d --diff     Show diff of files that don't match
+    -h --help     Show this help
+    -q --quiet    Only print if there is a problem
+    -v --verbose  Say more
+Usage
+    exit $ret
+}
+
+main() {
+
+    [ $# -gt 0 ] || usage
+
+    local arg val
+    while [ $# -gt 0 -a -z "${1##-*}" ]; do
+        arg=${1#-}; shift
+        val=${arg#*=}
+        case $arg in
+             -clean|c)  clean                              ;;
+              -diff|d)  SHOW_DIFF=true ; DIFF_OPTS="-w"    ;;
+          -diff=*|d=*)  SHOW_DIFF=true ; DIFF_OPTS="$val"  ;;
+              -help|h)  usage                              ;;
+             -quiet|q)  QUIET=true                         ;;
+           -verbose|v)  VERBOSE=true                       ;;
+                    -)  break                              ;;
+                    *)  error "Unknown argument: -$arg"    ;;
+        esac
+    done
+
+    [ $# -eq 0 -a -n "$DID_CLEAN" ] && exit 0
+    [ $# -gt 0 ] || error "Must give a file or directory"
+
+    [ $UID -eq 0 ] && error "This program must NOT be run as root"
+
+    mkdir -p $TEMP_DIR
+    local arg file
+    while [ $# -gt 0 ]; do
+        arg=$1; shift
+        if [ -f $arg ]; then
+            validate_xlat $arg
+
+        elif [ -d $arg ]; then
+            for file in $(find $arg -type f -name "*$EXT"); do
+                validate_xlat $file
+            done
+
+        else
+            err "Argument $arg is neither a file nor a directory"
+        fi
+    done
+
+    rmdir $TEMP_DIR
+    [ "$QUIET" ] && exit $FAILED
+
+    echo
+    if [ "$FAILED" -eq 0 ]; then
+        echo "Success!"
+    else
+        echo "Failure"
+    fi
+    plural $CHECKED "$ME: Checked %n file%s"
+    plural $FAILED  "$ME: %n file%s failed"
+    exit $FAILED
+}
+
+validate_xlat() {
+    local file="$1"
+
+    if [ ! -r $file ]; then
+        err "Could not read file $file"
+        return
+    fi
+
+    CHECKED=$((CHECKED + 1))
+    if egrep -vq "^_[A-Za-z0-9_]+_=" $file; then
+        err "Not sourcing suspicious file $file"
+        FAILED=$((FAILED + 1))
+        [ "$QUIET" ] && return 2
+        egrep -vn "^_[A-Za-z0-9_]\+_=" $file | head -n5
+        return 2
+    fi
+
+     if egrep -vq '^_[A-Za-z0-9_]+_="([^"]*\")*[^"]*"' $file; then
+        err "Un-escaped double-quote in: $file"
+        FAILED=$((FAILED + 1))
+        [ "$QUIET" ] && return 3
+        egrep -vn '^_[A-Za-z0-9_]+_="([^"]*\")*[^"]*"' $file | head -n5
+         return 3
+     fi
+
+    dbsay "Source $file"
+    . $file
+
+    local copy1="$(temp_file)" copy2="$(temp_file)"
+
+    dbsay "Read $file and make 2 copies"
+    grep "^_[a-zA-Z0-9_]\+_=" $file > $copy1
+
+    while read var_name; do
+        eval val=\$$var_name
+        val=${val//\"/\\\"}
+        printf '%s="%s"\n' $var_name "$val" >> $copy2
+    done << Read_Xlat
+$(sed -n 's/=.*//p' $file)
+Read_Xlat
+
+    dbsay "Look for difference between copy and original"
+
+    local diff
+    if diff=$(diff $DIFF_OPTS $copy1 $copy2 2>/dev/null); then
+        PASSED=$((PASSED + 1))
+        vsay "Passed: $file"
+    else
+        FAILED=$((FAILED + 1))
+        echo "Failed: $file" >&2
+        if [ "$QUET" ]; then
+            :
+        elif [ "$SHOW_DIFF" ]; then
+            echo $diff
+        else
+            echo "$diff" | sed -n 's/^-_/  _/p'
+        fi
+    fi
+
+    rm $copy1 $copy2
+}
+
+temp_file() {
+    local file=$(mktemp $TEMP_DIR/XXXXXXXX)
+    [ -z "$file" -o ! -e "$file" ] && error "Unable to make temparary file"
+    echo $file
+}
+
+plural() {
+    local n="$1"  str="$2"
+    case $n in
+        1) local s=  ies=y   are=is  have=has  were=was;;
+        *) local s=s ies=ies are=are have=have were=were;;
+    esac
+    echo "$str" | sed -e "s/%s/$s/g" -e "s/%ies/$ies/g" -e "s/%are/$are/g" \
+        -e "s/%have/$have/" -e "s/%n/$n/g" -e "s/%were/$were/g"
+}
+
+clean() {
+    rm -f $(find $TEMP_DIR -type f)
+    DID_CLEAN=true
+}
+
+qsay() {
+    [ "$QUIET" ] || echo "$@"
+}
+
+dbsay() {
+    [ "$DEBUG" ] && echo "$@"
+}
+
+vsay() {
+    [ "$QUIET"   ] && return
+    [ "$VERBOSE" ] && echo "$@"
+}
+
+error() {
+    err "$@"
+    exit 2
+}
+
+err() {
+    echo "$ME: $*" >&2
+}
+
+main "$@"

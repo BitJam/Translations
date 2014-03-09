@@ -1,0 +1,402 @@
+#!/bin/bash
+
+   OUTPUT_DIR=Output
+    TRANS_DIR=translations
+      PROJECT=antix-development
+  DOMAIN_FILE=TEXT_DOMAINS
+  RENAME_FILE=TEXT_RENAME
+STR_MAKER_DIR=string-maker
+   INITRD_DIR=Initrd
+       MO_DIR=mo-files
+  MO_ONLY_DIR=/usr/share/locale
+      POT_DIR=pot-files
+     XLAT_DIR=/usr/share/antiX/init-xlat
+      SRC_DIR=Src
+          EXT=.src
+
+   PLAIN_OPTS=--mode=plain
+   FANCY_OPTS=--mode=fancy
+ REPLACE_OPTS=--mode=replace
+XGETTEXT_OPTS="--add-comments --language=Shell --no-location --no-wrap"
+
+: ${COPYRIGHT_HOLDER:=antiX and Mepis}
+:     ${PACKAGE_NAME:=antiX Development}
+:          ${BUGS_TO:=bitjam@gmail.com}
+:   ${COPYRIGHT_YEAR:=2012 -- $(date +%Y)}
+
+ME=${0##*/}
+MY_DIR=$(dirname $(readlink -f $0))
+
+   CMD_REPLACE=$MY_DIR/replace-strings
+CMD_FIX_HEADER=$MY_DIR/fix-po-header
+
+usage() {
+    ret=${1:-0}
+    cat <<Usage
+Usage: $ME [options] [domains]
+
+Create .xlat files for the programs listed on the command line, or
+all *.src programs under the Src/ directory if no programs are given
+on the command line.
+
+Renamed text-domains are listed in the $RENAME_FILE file in the format:
+
+    new-name:old-name
+
+We assume a directory structure created by the tx client program for
+associated with the transifex.com web site.
+
+Options:
+  -d --domains=<file>  File containing domains        :$DOMAIN_FILE
+  -f --force           Force update even if output is newer than source
+  -h --help            Show this help
+  -m --mo-only         Only make .mo files
+  -o --outdir=<dir>    Output directory               :$OUTPUT_DIR
+  -p --pretend         Don't write any files
+  -q --quiet           Only print errors and warnings
+  -r --renames=<file>  File containing renamings      :$RENAME_FILE
+  -s --stop-at=<where> replace|en|strmaker|pot|mo
+  -t --transdir=<dir>  Directory holding translations :$TRANS_DIR
+  -T --test            Test
+  -v --verbose         Print more
+  -V --VERBOSE         Print even more
+Usage
+    exit $ret
+}
+
+main() {
+
+    local short_stack="dfhmoprstTvV" arg val
+    while [ $# -gt 0 -a -z "${1##-*}" ]; do
+        arg=${1#-}; shift
+
+        # Unstack single-letter options
+        case $arg in
+            [$short_stack][$short_stack]*)
+                if echo "$arg" | grep -q "^[$short_stack]\+$"; then
+                    set -- $(echo $arg | sed -r 's/([a-zA-Z])/ -\1 /g') "$@"
+                    continue
+                fi;;
+        esac
+
+        # Deal with all options that take a parameter
+        case $arg in
+        -domains|-outdir|-renames|-stop-at|-transdir|[dorst]) 
+            [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
+            val=$1
+            [ -n "$val" -a -z "${val##-*}" ] \
+                && fatal "Suspicious argument after -$arg: $(pqw $val)"
+            shift           ;;
+        *=*)  val=${arg#*=} ;;
+        *)  val="???"       ;;
+        esac
+
+        case $arg in
+          -domains|d) $DOMAIN_FILE=$val                ;;
+      -domains=*|d=*) $DOMAIN_FILE=$val                ;;
+            -force|f) FORCE=true                       ;;
+             -help|h) usage                            ;;
+          -mo-only|m) MO_ONLY=true                     ;;
+           -outdir|o) OUTPUT_DIR=$val                  ;;
+       -outdir=*|o=*) OUTPUT_DIR=$val                  ;;
+          -pretend|p) PRETEND=true                     ;;
+            -quiet|q) QUIET=true                       ;;
+          -renames|r) RENAME_FILE=$val                 ;;
+      -renames=*|r=*) RENAME_FILE=$val                 ;;
+         -transdir|t) TRANS_DIR=$val                   ;;
+     -transdir=*|t=*) TRANS_DIR=$val                   ;;
+          -stop-at|s) STOP_AFTER=$val                  ;;
+      -stop-at=*|s=*) STOP_AFTER=$val                  ;;
+          -verbose|v) VERBOSE=true                     ;;
+          -VERBOSE|V) VERY_VERBOSE=true                ;;
+                   *) fatal "Unknown parameter -$arg"  ;;
+        esac 
+
+    done
+    local domain name rename tdir po_count=0 mo_count=0 xlat_count=0
+
+    case $STOP_AFTER in
+        replace|en|strmaker|pot|mo|"")                                     ;;
+        *) fatal "--stop-after must be: replace, en, strmaker, pot, or mo" ;;
+    esac
+
+    local input_files="$*"
+    [ $# -eq 0 -a -n "$MO_ONLY" ] && input_files=$(grep "^\s*[a-zA-Z]" $DOMAIN_FILE)
+    [ $# -eq 0 -a -z "$MO_ONLY" ] && input_files=$(find $SRC_DIR -name "*$EXT")
+
+    vsayp $(echo "$input_files" | wc -w) "Start with %n domain name%s"
+    vvsay "$input_files"
+ 
+    local mo_dir=$MO_DIR
+    [ "$MO_ONLY" ] && mo_dir=$OUTPUT_DIR$MO_ONLY_DIR
+
+    [ -z "$MO_ONLY" ] && export TEXTDOMAINDIR=$PWD/$mo_dir
+
+    local start_time=$(get_time)
+    local input_file domain_cnt=0
+    for input_file in $input_files; do
+        domain=$(basename $input_file $EXT)
+        domain_cnt=$((domain_cnt + 1))
+        vsay "domain %3d: %s" $domain_cnt "$domain"
+
+        rename=$(grep ^$domain: $RENAME_FILE | cut -d: -f2)
+        if [ "$rename" ]; then
+            name=$rename
+        else
+            name=$(echo $domain | tr 'A-Z' 'a-z' | sed 's/\.//g')
+        fi
+
+        # Only used in xlat mode but no harm to always do it
+        local xlat_dir
+        case $domain in
+          init|ejectcd)  xlat_dir=$INITRD_DIR/live/locale/xlat;;
+                     *)  xlat_dir=$OUTPUT_DIR$XLAT_DIR ;;
+        esac
+
+        local str_maker=$STR_MAKER_DIR/$domain.str
+
+        [ -z "$MO_ONLY" ] && prep_xlat $domain $name
+
+        stem=$TRANS_DIR/$PROJECT.$name
+        if ! tdir=$(find_tdir $stem); then
+            warn "Could not find translations directory for $domain / $name"
+            continue
+        fi
+        
+        vvsay "directory: $tdir"
+        #continue
+        
+        local count=0 langs= lang po_file cmd mo_file
+        for po_file in $tdir/*.po; do
+            [ -f $po_file ] || continue
+            grep -q 'msgstr "..*"' $po_file || continue
+            lang=$(basename $po_file .po)
+
+            langs="$langs $lang"
+            count=$((count + 1))
+
+            mo_file=$mo_dir/$lang/LC_MESSAGES/$domain.mo
+            if is_older $mo_file $po_file; then
+                vsay "  > $mo_file"
+                pretend mkdir -p $(dirname $mo_file)
+                pretend msgfmt -o $mo_file $po_file && mo_count=$((mo_count + 1))
+            fi
+            
+            stop_after mo && continue
+
+            [ "$MO_ONLY" ] && continue
+
+            xlat_file=$xlat_dir/$lang/$domain.xlat
+
+            if [ ! -x $str_maker ]; then
+                warn "No string maker found: $str_maker"
+                continue
+            fi
+
+            if is_older $xlat_file $str_maker $mo_file; then
+                vsay "  > $xlat_file"
+                pretend mkdir -p $(dirname $xlat_file)
+                [ -z "$PRETEND" ] && LANGUAGE=$lang $str_maker > $xlat_file
+                [ -n "$PRETEND" -a -n "$VERY_VERBOSE" ] \
+                    && echo "LANGUAGE=$lang $str_maker > $xlat_file"
+                xlat_count=$((xlat_count + 1))
+            fi
+
+        done
+        po_count=$((po_count + count))
+        vvsayp $count "%n lang%s: $langs"
+        [ $count -eq 0 ] && warn "No languages for $domain"
+
+        [ "$SINGLE_STEP" ] || continue
+        read xxx
+    done
+
+    if [ -z "$QUIET" ]; then
+
+        local dt=$((`get_time` - $start_time))
+        local seconds=$(get_seconds $dt)
+        sayp $po_count   "processed %n .po files in $seconds second%s"
+        sayp $mo_count   "Created %n .mo file%s" $mo_count
+        sayp $xlat_count "Created %n .xlat file%s" $xlat_count
+    fi
+}
+    
+
+prep_xlat() {
+    local domain=$1  name=$2
+
+    local src_file=$(find $SRC_DIR -name $domain.src)
+    [ -z "$src_file" ] \
+        && warn "Could not find source file for domain $domain" \
+        && continue
+
+    local src_cnt=$(echo $src_file | wc -w)
+    [ $src_cnt -gt 1 ] \
+        && warn "Multiple source files with name $domain.src" \
+        && continue
+
+    local init_opt bin_dir src_dir=$(dirname $src_file)
+    src_dir=${src_dir#Src/}
+    case $src_dir/ in
+        live-initrd/*) bin_dir=$INITRD_DIR${src_dir#live-initrd}      ;;
+               sqfs/*) bin_dir=$OUTPUT_DIR${src_dir#sqfs}             ;;
+        *) warn "Unrecognized source directory: $src_dir" && continue ;;
+    esac
+
+    [ $domain = init ] && init_opt="--init"
+    
+    local bin_file=$bin_dir/$domain
+    if is_older $bin_file $src_file; then
+        vsay "> $bin_file"
+        pretend $CMD_REPLACE $REPLACE_OPTS $init_opt $src_file -o $bin_file
+    fi
+
+    stop_after replace && continue
+
+    local opts=$PLAIN_OPTS
+    local en_file=$xlat_dir/en/$domain.xlat
+
+    if is_older $en_file $src_file; then
+        vsay "> $en_file"
+        pretend mkdir -p $(dirname $en_file)
+        pretend $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file -o $en_file
+        xlat_count=$((xlat_count + 1))
+    fi
+
+    stop_after en && continue
+
+    if is_older $str_maker $src_file; then
+        vsay "> $str_maker"
+        pretend $CMD_REPLACE $FANCY_OPTS $init_opt $src_file -o $str_maker
+        pretend chmod a+x $str_maker
+    fi
+
+    stop_after strmaker && continue
+
+    local pot_file=$POT_DIR/$domain.pot
+    if is_older $pot_file $str_maker; then
+        vsay "> $pot_file"
+        pretend mkdir -p $POT_DIR
+        pretend xgettext $XGETTEXT_OPTS \
+            --copyright-holder="$COPYRIGHT_HOLDER" \
+            --package-name="$PACKAGE_NAME" \
+            --msgid-bugs-address="$BUGS_TO" \
+            -o $pot_file $str_maker
+
+    [ -x $FIX_HEADER ] && pretend $CMD_FIX_HEADER -q $pot_file
+    fi
+  
+    stop_after pot && continue
+}
+
+find_tdir() {
+    local ext stem=$1
+    _find_tdir $stem && return 0
+    for ext in sh py; do
+        stem2=${stem%$ext}
+        [ $stem2 = $stem ] && continue
+        _find_tdir $stem2 && return 0
+    done
+    return 1
+}
+
+_find_tdir() {
+    local ext stem=$1
+    for ext in "" sh pot shpot py pypot; do
+        [ -d $stem$ext ] || continue
+        echo $stem$ext
+        return 0
+    done
+    return 1
+}
+
+is_older() {
+    local targ=$1 sorc
+    shift
+
+    [ "$FORCE" ] && return 0
+    [ -f $targ ] || return 0
+    local targ_time=$(stat -c %Y $targ)
+
+    for sorc; do
+        local sorc_time=$(stat -c %Y $sorc)
+        [ $targ_time -lt $sorc_time ] && return 0
+    done
+    return 1
+}
+
+pretend() {
+    [ "$VERY_VERBOSE" ] && echo "$*"
+    [ "$PRETEND" ] || "$@"
+}
+
+plural() {
+    local n="$1"  str="$2"
+    case $n in
+        1) local s=  ies=y   are=is  have=has  were=was;;
+        *) local s=s ies=ies are=are have=have were=were;;
+    esac
+    echo "$str" | sed -e "s/%s/$s/g" -e "s/%ies/$ies/g" -e "s/%are/$are/g" \
+        -e "s/%have/$have/" -e "s/%n/$n/g" -e "s/%were/$were/g"
+}
+
+stop_after() {
+    [ "$STOP_AFTER" = "$1" ]
+    return $?
+}
+
+fatal() {
+    printf "$ME: fatal error: $@" >&2
+    echo >&2
+    exit 2
+}
+
+warn() {
+    printf "$ME: warning: $@" >&2
+    echo >&2
+    return 0
+}
+
+sayp() {
+    [ "$QUIET" ] && return
+    plural "$@"
+}
+
+say() {
+    [ "$QUIET" ] && return
+    printf "$@"
+    echo
+}
+
+vsay() {
+    [ -n "$VERBOSE" -o -n "$VERY_VERBOSE" ] || return
+    printf "$@"
+    echo
+}
+
+vsayp() {
+    [ -n "$VERBOSE" -o -n "$VERY_VERBOSE" ] || return
+    plural "$@"
+}
+
+
+vvsay() {
+    [ -n "$VERY_VERBOSE" ] || return
+    printf "$@"
+    echo
+}
+vvsayp() {
+    [ -n "$VERY_VERBOSE" ] || return
+    plural "$@"
+}
+
+
+get_time() { cut -d" " -f22 /proc/self/stat ;}
+
+get_seconds() {
+    local dt=${1:-$(get_time)}
+    printf "%02d" $dt | sed -r 's/(..)$/.\1/'
+}
+
+main "$@"
+

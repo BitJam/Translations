@@ -1,0 +1,381 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          antiX-init
+# Required-Start:    checkroot
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: antiX-init
+# Description: localize /etc/skel, create /home/demo, customize X, mirrors, set default desktop
+### END INIT INFO
+
+# GETTEXT_KEYWORD="echo_live"
+# GETTEXT_KEYWORD="echo_script"
+
+case "$1" in
+    start)
+        ;;
+    stop)
+        exit 0
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+        ;;
+esac
+
+XSESSION_DIR=/usr/share/xsessions
+ROX_WMs=fluxbox,icewm,jwm
+MENU_WMs="fluxbox jwm icewm"
+
+AUTO_MOUNT=
+#-jbb For debugging
+CMDLINE=${CMDLINE:-$(cat /proc/cmdline)}
+for param in $CMDLINE; do
+    case "$param" in
+             desktop=*)  CMD_DESKTOP=${param#*=} ;  DO_DESKTOP=true ;;
+                 dpi=*)      CMD_DPI=${param#*=}                    ;;
+                 kbd=*)      CMD_KBD=${param#*=} ;     DO_XKBD=true ;;
+               kbopt=*)   XKBOPTIONS=${param#*=} ;     DO_XKBD=true ;;
+               kbvar=*)   XKBVARIANT=${param#*=} ;     DO_XKBD=true ;;
+                lang=*)     CMD_LANG=${param#*=} ;     DO_XKBD=true ;;
+              mirror=*)   CMD_MIRROR=${param#*=}                    ;;
+    
+                 noRox)   CMD_NO_ROX=true        ;  DO_DESKTOP=true ;;
+              xorgconf)    MAKE_XORG=true                           ;;
+                xres=*)    MAKE_XORG=true                           ;;
+                drvr=*)    MAKE_XORG=true                           ;;
+               xdrvr=*)    MAKE_XORG=true                           ;;
+                 autox)       AUTO_X=true                           ;;
+
+          fstab=static)        FSTAB=static                         ;;
+        automount|amnt)   AUTO_MOUNT=full                           ;;
+    automount=*|amnt=*)   AUTO_MOUNT=${param#*=}                    ;;
+
+    esac
+done
+
+PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin"; export PATH
+
+umask 022
+
+. /usr/share/antiX/lib/antiX-init-utils.sh
+
+start_init_logging
+load_translation
+
+create_home() {
+
+    local demo=/home/demo
+    rmdir $demo 2>/dev/null
+
+    if test -d /home && ls /home | grep -v lost+found | grep -q [a-zA-Z0-9]; then
+        echo_live "Files already exist under %s" $(pquote /home)
+        echo_live "Not creating or populating %s" $(pquote $demo)
+        return
+    fi
+
+    echo_live "Populating %s directory" $(pquote $demo)
+
+    mkdir -p $demo
+    cp -r -P -p mode /etc/skel/* /etc/skel/.[a-zA-Z]* $demo 2>/dev/null
+    chown -R demo:users $demo 2>/dev/null
+}
+
+localize_skel() {
+    local l10n_dir=/usr/share/antiX/localisation
+    local from=$l10n_dir/$1
+    local dest=/etc/skel
+
+    # Silently skip systems which have no localisation directory
+    [ -d "$l10n_dir" ] || return
+
+    if ! [ -d $from ]; then
+        error "Unknown menu localization language %s" $(pquote $1)
+        error "Directory not found %s" $from
+        return
+    fi
+
+    echo_live "Localizing menus to %s in %s" $(pquote $1) $(pquote $dest)
+
+    # Basically a cp -a but make all top level files and directories hidden
+    for file in $(ls $from); do
+       if [ -d $from/$file ]; then
+           mkdir -p /$dest/.$file
+           cp -a $from/$file/* $dest/.$file
+       else
+           rm -rf $dest/.$file
+           cp $from/$file $dest/.$file
+       fi
+    done
+}
+
+set_dpi() {
+    local dpi=$1
+
+    if ! echo $dpi | grep -q "^[[:digit:]]\+$"; then
+        error "Invalid %s boot parameter %s" $(pquote dpi) $(pquote $dpi)
+        return
+    fi
+    echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi)
+    sed -i -e "s/^xserver_arguments.*/xserver_arguments -dpi $dpi -nolisten tcp/" \
+        /etc/slim.conf /usr/share/slim/themes/antiX/slim-install.conf
+}
+
+set_mirror() {
+    local mirror=$1
+
+    case "$mirror" in
+        [a-zA-Z][a-zA-Z]) ;;
+        *)
+            error "Bad mirror code %s (expected two letters)" $(pquote $mirror)
+            return;;
+    esac
+                
+    source_list=/etc/apt/sources.list.d/debian.list
+
+    first_write $source_list || [ "$CMD_MIRROR" ] || return
+
+    echo_live "Localizing %s to %s mirror" $(pquote $source_list) $(pquote $MIRROR)
+    sed -i "s=/ftp\.\(..\.\)\\?debian\.org/=/ftp.$mirror.debian.org/=" $source_list
+}
+
+set_default_desktop() {
+    local desktop=$1
+    local noRox=$2
+    local xinitrc=/etc/skel/.xinitrc
+
+    # Grab default desktop if it was not already supplied
+    if [ -z "$desktop" ]; then
+        desktop=$(grep ^DEFAULT_DESKTOP= $xinitrc)
+        desktop=${desktop#*=}
+        if [ -z "$desktop" ]; then
+            error "Could not find %s in %s" $(pquote DEFAULT_DESKTOP) $(pquote $xinitrc)
+            return
+        fi
+        echo_live "Found default desktop %s" $(pquote $desktop)
+    fi
+
+    # Validate desktop (first strip off Rox-)
+    desktop=${desktop#Rox-}
+    local valid_desktops
+    for x in $(grep -h ^Name= $XSESSION_DIR/* | cut -d= -f2 | tr "[A-Z]" "[a-z]" | sort -u); do
+        valid_desktops="$valid_desktops,$x"
+    done
+    valid_desktops=${valid_desktops#,}
+    case ",$valid_desktops," in
+        *,$desktop,*) ;;
+                   *)
+            error "Desktop %s is not a valid desktop." $(pquote $desktop)
+            error "Valid choices are %s" "$NO_COLOR$valid_desktops"
+            return;;
+    esac
+
+    # Add Rox- prefix if wanted and if able
+    if ! [ "$noRox" ]; then
+        case ",$ROX_WMs," in
+            *,$desktop,*) desktop="Rox-$desktop";;
+        esac
+    fi
+
+    # Now change the default in the .xinitrc files
+    echo_live "Setting default desktop to %s" $(pquote $desktop)
+
+    local regex="s/^DEFAULT_DESKTOP=.*/DEFAULT_DESKTOP=$desktop/"
+    sed -i $regex $xinitrc
+
+    local demo_xinitrc=/home/demo/.xinitrc
+    if [ -e $demo_xinitrc ]; then
+        sed -i $regex $demo_xinitrc
+        chown demo:users $demo_xinitrc
+    fi
+}
+
+create_automount_file() {
+    cat > $am_file << Automount_File
+This file was created by $0
+
+The existence of this file causes the make-fstab program to
+automount usb sticks when they are plugged in.
+
+Simply delete this file if you don't want that behaviour.
+
+These are the boot options that control automounting:
+
+    Boot Option        Effect
+    -----------        ------
+    automount          enable automount
+    automount=full     enable automount
+    automount=late     only automount after boot up
+    automount=static   only automount during boot up
+    automount=off      disable automount (default)
+    fstab=static       disable hotplug (and automount)
+
+Notes:
+  o "amnt" is an abbreviation for "automount".
+  o Late and static automounting only make sense for
+      systems with root persistence
+  o You can override the boot options by creating or
+       removing $am_file and/or $hp_file
+
+Automount_File
+}
+
+create_hotplug_file() {
+    cat > $hp_file << Hotplug_File
+This file was created by $0
+
+The existence of this file causes the make-fstab program to
+add and delete fstab entries when usb sticks are inserted
+and removed.  
+
+Simply delete this file if you don't want that behaviour.
+Deleting this file will also disable automounting.
+
+These are the boot options that control automounting:
+
+    Boot Option        Effect
+    -----------        ------
+    automount          enable automount
+    automount=full     enable automount
+    automount=late     only automount after boot up
+    automount=static   only automount during boot up
+    automount=off      disable automount (default)
+    fstab=static       disable hotplug (and automount)
+
+Notes:
+  o "amnt" is an abbreviation for "automount".
+  o Late and static automounting only make sense for
+      systems with root persistence
+  o You can override the boot options by creating or
+       removing $am_file and/or $hp_file
+
+Hotplug_File
+}
+
+
+#----- Main code starts here --------------------------------------------------
+
+{
+    echo_script "Localizing/configuring X-Windows" $0
+
+    am_file=/etc/fstab.automount
+    hp_file=/etc/fstab.hotplug
+    ams_file=/etc/fstab.state
+
+    case "$AUTO_MOUNT" in
+        late|static) echo $AUTO_MOUNT > $ams_file                    ;;
+           full|off) rm -f $ams_file                                 ;;
+                  *) [ -r $ams_file ] && AUTO_MOUNT=$(cat $ams_file) ;;
+    esac
+
+    case "$AUTO_MOUNT" in
+        full|static|late) echo_live "Enabling %s automount" $(pquote $AUTO_MOUNT) ;;
+                     off) echo_live "Disabling automount"                         ;;
+    esac
+
+    case "$AUTO_MOUNT" in 
+           late|off) rm -f $am_file ;; 
+        full|static) create_automount_file;;
+
+    esac
+
+    echo_live "Building %s via %s" $(pquote /etc/fstab) $(pquote make-fstab)
+    grep -q -e ^/dev -e ^UUID= -e ^LABEL=  /etc/fstab || rm /etc/fstab
+    make-fstab -v 
+
+    case "$AUTO_MOUNT" in
+        static) rm -f $am_file ;;
+          late) create_automount_file ;;
+    esac
+
+    case "FSTAB" in
+        static) echo_live "Disabling fstab hotplugging (his will also disable automount)"
+                rm -f $hp_file  ;;
+
+             *) echo_live "Enabling fstab hotplugging"
+                create_hotplug_file ;;
+    esac
+
+    #-jbb: for debugging
+    unset COUNTRY WM_LANG KEYBOARDS KEYTABLE LANG MIRROR TZ XKBLAYOUT CONSOLE_FONT
+    [ "$CMD_LANG" ] && get_init_lang $CMD_LANG "error"
+
+    usb_rules=/etc/udev/rules.d/99-usbstorage.rules
+    usb_unused=$usb_rules.unused
+
+
+    MIRROR=${CMD_MIRROR:-$MIRROR}
+    [ "$MIRROR" ] && set_mirror $MIRROR
+ 
+    [ "$WM_LANG" ] && localize_skel $WM_LANG
+
+    # Always create keyboard file in non-perisistent system even with no X
+    kb_file=/etc/default/keyboard
+    default_xkb_opts="grp:alt_shift_toggle,terminate:ctrl_alt_bksp,grp_led:scroll"
+
+    if first_write $kb_file || [ "$DO_XKBD" ]; then
+        XKBLAYOUT=${CMD_KBD:-$XKBLAYOUT}
+        [ "$XKBLAYOUT"  ] && echo_live "Setting %s to %s" $(pquote xkb-layout)  $(pquote $XKBLAYOUT)
+        [ "$XKBMODEL"   ] && echo_live "Setting %s to %s" $(pquote xkb-model)   $(pquote $XKBMODEL)
+        [ "$XKBVARIANT" ] && echo_live "Setting %s to %s" $(pquote xkb-variant) $(pquote $XKBVARIANT)
+        [ "$XKBOPTIONS" ] && echo_live "Setting %s to %s" $(pquote xkb-options) $(pquote $XKBOPTIONS)
+
+        cat > $kb_file <<Keyboard_Out
+XKBMODEL="${XKBMODEL:=pc105}"
+XKBLAYOUT="${XKBLAYOUT:=us}"
+XKBVARIANT="${XKBVARIANT}"
+XKBOPTIONS="${XKBOPTIONS:=$default_xkb_opts}"
+Keyboard_Out
+    fi
+
+    # Don't bother with X stuff on systems without X
+    #--------------------------------------------------------------------------
+    if [ ! -d "$XSESSION_DIR" ]; then
+        create_home
+        exit 0
+    fi
+    #--------------------------------------------------------------------------
+
+    [ "$CMD_DPI" ] && set_dpi $CMD_DPI 
+
+    [ "$DO_DESKTOP" ] && set_default_desktop "$CMD_DESKTOP" "$CMD_NO_ROX"
+
+    xorg_conf=/etc/X11/xorg.conf
+
+#    if [ "$MAKE_XORG" ]; then
+#        if first_write $xorg_conf || [ "$AUTO_X" ]; then
+#
+#            echo_live "Configuring %s file" $(pquote $xorg_conf)
+#            [ -f "$xorg_conf" ] && mv -f $xorg_conf $xorg_conf.bak
+#            /usr/sbin/buildxconfig
+#            sed -i "s/XkbLayout.*/XkbLayout \"$XKBLAYOUT\"/g" $xorg_conf
+#        fi
+#    fi
+
+    if [ "$MAKE_XORG" ]; then
+        echo_live "Configuring %s file" $(pquote $xorg_conf)
+        [ -f "$xorg_conf" ] && mv -f $xorg_conf $xorg_conf.bak
+        /usr/sbin/buildxconfig
+        sed -i "s/XkbLayout.*/XkbLayout \"$XKBLAYOUT\"/g" $xorg_conf
+    fi
+
+    create_home
+
+    enable_xkb="s/^#\?setxkbmap.*/setxkbmap -layout \"$XKBLAYOUT\" -option \"$XKBOPTIONS\" -variant \"$XKBVARIANT\"/"
+
+    for wm in $MENU_WMs;  do
+        f1=/home/demo/.$wm/startup
+        f2=/etc/skel/.$wm/menu
+        f3=/etc/skel/.config/rox.sourceforge.net/ROX-Filer/pb_antiX-$wm
+        [ -e $f1 ] && sed -i -e "$enable_xkb"         $f1
+        [ -e $f2 ] && sed -i -e "/gksu minstall/d"    $f2
+        [ -e $f3 ] && sed -i -e "/minstall.desktop/d" $f3
+    done
+
+} 2>&1 | tee -a $INIT_LOG_FILE
+
+exit 0

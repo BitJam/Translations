@@ -1,0 +1,204 @@
+#!/bin/bash
+
+     OUT_DIR=Output
+  TRANS_DIR=translations
+DOMAIN_FILE=TEXT_DOMAINS
+RENAME_FILE=RENAME_DOMAIN
+    PROJECT=antix-development
+
+ME=${0##*/}
+usage() {
+    ret=${1:-0}
+    cat <<Usage
+Usage: $ME [options]
+
+Create .mo files for the text-domains listed in the file $DOMAIN_FILE.
+Renamed text-domains are listed in the $RENAME_FILE file in the format:
+
+    new-name:old-name
+
+The new-names should be listed in $DOMAIN_FILE.
+
+We assume a directory structure created by the tx client program for
+associated with the transifex.com web site.
+
+Options:
+   -d --domains   File containing text-domains:   $DOMAIN_FILE
+   -f --force     Force update even if .mo is newer than .po
+   -h --help      Show this help
+   -o --outdir    Output directory                $OUT_DIR
+   -P --pretend   Just print what would be done
+   -q --quiet     Only print errors and warnings
+   -r --renames   File containing renamings:      $RENAME_FILE
+   -t --test      Test
+   -T --transdir  Directory holding translations: $TRANS_DIR
+   -v --verbose   Print more
+   -V --VERBOSE   Print even more
+Usage
+    exit $ret
+}
+
+main() {
+
+    local short_stack="dfhoprtvVq" arg val
+    while [ $# -gt 0 -a -z "${1##-*}" ]; do
+        arg=${1#-}; shift
+
+        # Unstack single-letter options
+        case $arg in
+            [$short_stack][$short_stack]*)
+                if echo "$arg" | grep -q "^[$short_stack]\+$"; then
+                    set -- $(echo $arg | sed -r 's/([a-zA-Z])/ -\1 /g') "$@"
+                    continue
+                fi;;
+        esac
+
+        # Deal with all options that take a parameter
+        case $arg in
+        -domains|-outdir|-renames|-transdir|[doprt]) 
+            [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
+            val=$1
+            [ -n "$val" -a -z "${val##-*}" ] \
+                && fatal "Suspicious argument after -$arg: $(pqw $val)"
+            shift           ;;
+        *=*)  val=${arg#*=} ;;
+        *)  val="???"       ;;
+        esac
+
+        case $arg in
+          -domains|d) DOMAIN_FILE=$val                 ;;
+            -force|f) FORCE=true                       ;;
+             -help|h) usage                            ;;
+           -outdir|o) OUT_DIR=$value                   ;;
+          -pretend|p) PRETEND=true                     ;;
+            -quiet|q) QUIET=true                       ;;
+          -renames|r) RENAMES=$val                     ;;
+         -transdir|t) TRANS_DIR=$val                   ;;
+          -verbose|v) VERBOSE=true                     ;;
+          -VERBOSE|V) VERY_VERBOSE=true                ;;
+                   *) fatal "Unknown parameter -$arg"  ;;
+        esac 
+
+    done
+    local domain domains name rename tdir tot_count=0 net_count=0
+    [ -r $DOMAIN_FILE ] || fatal "Could not find/read domains file: $DOMAIN_FILE"
+
+    local domains=$(grep "^\s*[a-zA-Z]" $DOMAIN_FILE)
+    vsay "Found $(echo "$domains" | wc -l) domain names in $DOMAIN_FILE"
+   
+    local start_time=$(get_time)
+    for domain in $domains; do
+        vsay "domain: $domain"
+
+        rename=$(grep ^$domain: $RENAME_FILE | cut -d: -f2)
+        if [ "$rename" ]; then
+            name=$rename
+        else
+            name=$(echo $domain | tr 'A-Z' 'a-z' | sed 's/\.//g')
+        fi
+
+        stem=$TRANS_DIR/$PROJECT.$name
+        tdir=$(find_tdir $stem) \
+            || warn "Could not find translations directory for $domain / $name"
+        
+
+        vvsay "directory: $tdir"
+        #continue
+        
+        local count=0 langs="" lang po_file cmd mo_file
+        for po_file in $tdir/*.po; do
+            [ -f $po_file ] || continue
+            #grep -q 'msgstr "..*"' $po_file || continue
+            lang=$(basename $po_file .po)
+
+            langs="$langs $lang"
+            count=$((count + 1))
+
+            mo_file=$OUT_DIR/usr/share/locale/$lang/LC_MESSAGES/$domain.mo
+            if [ -z "$FORCE" -a -f $mo_file ]; then
+                local po_time=$(stat -c %Y $po_file)
+                local mo_time=$(stat -c %Y $mo_file)
+                [ $mo_time -ge $po_time ] && continue
+            fi
+
+            cmd="msgfmt -o $mo_file $po_file"
+            if [ "$PRETEND" ]; then
+                echo $cmd
+                net_count=$((net_count + 1))
+            else
+                mkdir -p $(dirname $mo_file)
+                $cmd && net_count=$((net_count + 1))
+            fi
+        done
+        tot_count=$((tot_count + count))
+        vvsay "%2d langs: %s" $count "$langs"
+        [ $count -eq 0 ] && warn "No languages for $domain"
+    done
+
+    [ "$QUIET" ] && exit 0
+
+    local dt=$((`get_time` - $start_time))
+    local seconds=$(get_seconds $dt)
+    say "processed %d .po files in %s seconds" $tot_count $seconds
+    say "Created %d .mo file(s)" $net_count
+}
+
+find_tdir() {
+    local ext stem=$1
+    _find_tdir $stem && return 0
+    for ext in sh py; do
+        stem2=${stem%$ext}
+        [ $stem2 = $stem ] && continue
+        _find_tdir $stem2 && return 0
+    done
+    return 1
+}
+
+_find_tdir() {
+    local ext stem=$1
+    for ext in "" pot shpot py pypot; do
+        [ -d $stem$ext ] || continue
+        echo $stem$ext
+        return 0
+    done
+    return 1
+}
+
+fatal() {
+    printf "$ME: fatal error: $@" >&2
+    echo
+    exit 2
+}
+
+warn() {
+    printf "$ME: warning: $@" >&2
+    echo
+}
+
+say() {
+    [ "$QUIET" ] && return
+    printf "$@"
+    echo
+}
+
+vsay() {
+    [ -n "$VERBOSE" -o -n "$VERY_VERBOSE" ] || return
+    printf "$@"
+    echo
+}
+
+vvsay() {
+    [ -n "$VERY_VERBOSE" ] || return
+    printf "$@"
+    echo
+}
+
+get_time() { cut -d" " -f22 /proc/self/stat ;}
+
+get_seconds() {
+    local dt=${1:-$(get_time)}
+    printf "%02d" $dt | sed -r 's/(..)$/.\1/'
+}
+
+main "$@"
+

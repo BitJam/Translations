@@ -1,0 +1,160 @@
+Introduction
+------------
+This bundle automates many of the translation tasks for antiX and
+similar distros.  We hope to expand its functionality to handle
+similar tasks.  For now it generates .mo files from .po files and
+creates .xlat files and modified scripts used by our xlat
+translation system.
+
+It is based on getting translations done on the web site
+https://www.transifex.com/.  It assumes you are uploading and
+downloading files via the "tx" client program.  The translations
+are assumed to be under the translations/ subdirectory which can
+be (and pehaps should be) be a symlink.  You also need the
+ .tx/config file to use the "tx" program.  This can probably be
+easily adapted to work with other systems.  All that is required
+is a rational directory structure containing all the .po files
+that will be used.  For now, at least, you will need to run the
+"tx" script manually.
+
+The .po files containing translations are used in at least two
+different systems.  One system simple creates .mo files that will
+end up on the target system under /usr/share/locale.  These are
+created with "make mo".
+
+The other system creates .xlat files for the /init script and the
+Live init.d/ scripts.  It also makes modified copies of the
+scripts. substituting English strings for variables that are
+defined in the .xlat files.  under the /usr/share/antiX/init-xlat
+directory.
+
+
+Standard Translation Inputs
+---------------------------
+Standard translations are controled by 2 files:
+  TEXT_DOMAINS    Names of programs that get .mo files
+  TEXT_RENAME     Program names that have changed
+
+The renaming is needed because the names of some programs have
+changed.  We will only handle translations for the programs
+listed in the TEXT_DOMAINS file.
+
+Xlat Translation Inputs
+-----------------------
+The Xlat system only works with shell scripts.  It must modify
+the source code to replace a class of literal strings with
+variables.  The .xlat files contain source code that assigns
+values to these variables.  For each program there must but a
+ .xlat file for each language the program has been translated
+into.  Unlike the standard .mo system, we NEED to have an en.xlat
+file or else all the strings that are supposed to be translated
+will be empty.  On the plus side, this is much faster than
+calling gettext for every string and it works on systems where
+gettext is not available, in particular inside the initrd.
+
+Scripts
+-------
+
+  replace-strings           Main tool to amke .xlat files
+  make-xlat-files           Create .xlat files and .mo files
+  validate-xlat             Validate .xlat files
+  Utils/                    Utilities not needed ATM
+
+So there are three levels.  The lowest level is replace-strings
+which will can replace strings with variable names and can also
+generate string-maker scripts that are used to make translated
+versions of .xlat files.  It can also make en.xlat files directly
+beause these don't require translation.
+
+Directories
+-----------
+
+    Input:
+    ------
+    Src/             Source code for scripts to be xlated.
+    Scripts/         Scripts that run the show
+    translations/    All .po files
+
+    Output:
+    -------
+    Output/          What goes into a squashfs file
+    Initrd/          What goes into an initrd
+
+    Intermediate:
+    -------------
+    pot-files/
+    string-maker/
+    mo-files/
+
+Outputs
+-------
+
+Xlat Files are small scripts that assign values to variables.
+Here are some examples:
+
+    _Setting_language_via_X_="Setting language via %s"
+    _Unknown_language_code_X_="Unknown language code %s"
+    _Valid_languages_codes_X_="Valid languages codes %s"
+
+In addition to the modified scripts and xlat files that are put
+in the $PREFIX directory tree, .pot files are put in the local
+pot-files/ directory.  These should be used to create .mo files
+that get put under $TEXTDOMAINDIR.  Note that files under
+$TEXTDOMAINDIR are used strictly as inputs.  Nothing gets
+automatically written there.
+
+
+Make Targets:
+-------------
+  all
+      Creates all output scripts,  .xlat files, and .mo files
+
+  xlat
+      Create all output scripts and .xlat files.
+
+  mo
+      Create all output .mo files.
+
+  validate
+      Validate all .xlate files that have been created.
+
+  clean
+      Delete all output and intermediate files and directories
+
+  force-all
+      Force all outputs to be created from scatch.  No
+      dependency checking.
+
+  force-xlat
+      Force output scripts and .xlat files to be created.
+
+  force-mo
+      Force all output .mo files to be created.
+
+  initrd
+      Force /init script and init.xlat to be created.
+
+  install-initrd
+      Copy Initrd/ directory to INITRD_IDIR directory.
+
+  install
+      Copy all files under Output/ to the / file system.
+      Change the location it is copied with the PREFIX variable.
+
+  uninstall
+      Delete all files and directories that were copied with
+      a "make install".  It uses the file under Output/ to
+      determine what to delete.  Maybe be unsafe.
+
+
+
+Counting files (as of Sat March 8, 2014)
+----------------------------------------
+  955 .po files on transifex all
+  638 .po files on transifex non-empty
+
+  522 .mo files in /usr/share/locale
+   79 .mo files in mo-files
+  601 .mo files total
+
+Okay.  There are 37 .po files that aren't used.

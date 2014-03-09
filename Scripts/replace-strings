@@ -1,0 +1,190 @@
+#!/usr/bin/perl
+
+use Getopt::Long qw(:config no_ignore_case);
+use English;
+use File::Basename;
+
+use strict;
+use warnings;
+my $ME = $0; $ME =~ s{.*/}{};
+
+my ($QUIET, $VERBOSE);
+
+my @KEY_WORDS = (qw/echo_live echo_script error pf/);
+my @APPEND    = ();
+
+my (@LABELS, %LABEL, %STRING, $UP, $MODE, $STOP_WORDS);
+my ($INIT_FORMAT, $DOMAIN, $LOCATION, $OUT_FILE);
+
+my @MODES = qw(fancy plain replace strings);
+
+my $USAGE = <<Usage;
+Usage: $ME [options] file1 file2 ...
+
+Extract most single-line double-quoted strings in a shell script and
+replaces them with a variable with a similar name.  In addition, can
+create a strings file that is a shell script that assigns the string
+back to the variable.  There are two different algorithms for choosing
+the strings.  The first (default) uses keywords that preceed the
+string.  
+
+The second (--init) is based on the content of the string. The string
+must be preceeded by at a space (not an equal sign). The can
+opptionally start with spaces and then an optional %s  but these must
+be followed by optional space and then at least two consecutive
+letters.  The string is disaqualified if it contains a dollar-sign
+becuase these normally indicates string interpolation.  Finally in
+--init mode, there is a list of stop-keywords.  Any string on a line
+that starts with one of these keywords is not replaced.
+
+Options
+    --append <phrase> Append the phrase to the string files
+    --domain <name>   Use <name> as the text domain
+    --help            Show this help.
+    --init            Customize string recognition for /init script
+    --location        Add comments giving location in source file
+    --keys <a,b,c>    Words to key translation off of:
+                      Default: @KEY_WORDS
+    --mode=<mode>     fancy|plain|replace|raw
+    --output=<file>   Send output to <file> instead of stdout
+    --quiet           print less
+    --STOP <words>    Ignore text preceded by any of these words
+    --up              Convert all strings to uppercase for testing
+    --verbose         Print more
+Usage
+
+GetOptions(
+    "append=s"     => \@APPEND,
+    "domain=s"     => \$DOMAIN,
+    "help"         => sub { print $USAGE; exit },
+    "init"         => \$INIT_FORMAT,
+    "location"     => \$LOCATION,
+    "keys=s"       => \@KEY_WORDS,
+    "mode=s"       => \$MODE,
+    "output=s"     => \$OUT_FILE,
+    "quiet"        => \$QUIET,
+    "STOP=s"       => \$STOP_WORDS,
+    "up"           => \$UP, 
+    "verbose"      => \$VERBOSE,
+) or die $USAGE;
+
+@ARGV == 1 or do {
+    warn "$ME: Must give one file to replace strings in.\n";
+    die  "$ME: use -h or --help for help.\n";
+};
+
+$MODE ||= "replace";
+
+$MODE =~ m/^\w+$/ or die "Invalid mode: $MODE\n";
+
+for my $mode (@MODES) {
+    $mode =~ /^$MODE/ and $MODE = $mode;
+}
+
+$MODE =~ /^(fancy|plain|replace|strings)$/ or die "Invalid mode: $MODE\n";
+
+$DOMAIN or do {
+    $DOMAIN = basename $ARGV[0];
+    $DOMAIN =~ s/\.src$//;
+};
+
+$OUT_FILE and do {
+    my $odir = $OUT_FILE;
+    $odir =~ s{/[^/]+$}{};
+    $odir ne $OUT_FILE and system('mkdir', '-p', $odir);
+    open my $OUT_HANDLE, ">", "$OUT_FILE" 
+        or die "Could not open $OUT_FILE for output: $!\n";
+    select $OUT_HANDLE;
+};
+
+$MODE eq "fancy" and @ARGV and print <<PREAMBLE;
+#!/bin/sh
+
+export TEXTDOMAIN=$DOMAIN
+
+PREAMBLE
+
+$INIT_FORMAT and $STOP_WORDS ||= "db_msg,breakpoint,vmsg_if";
+$STOP_WORDS ||= "#";
+
+my $STOP_REGEX = "^\\s*(:?#|" . join("|", split ",", $STOP_WORDS) . ")";
+$STOP_REGEX =~ s/(\w)([|)])/$1\\b$2/g;
+
+my $KEY_WORD_REGEX = @KEY_WORDS ? "\\b" . join("|", @KEY_WORDS) : "";
+
+while (<>) {
+    m/$STOP_REGEX/ or do {
+        if ($INIT_FORMAT) {
+            s/(\s)"((?:%s)?\s*[a-zA-Z]{2}[^\$"]*)"/$1 . replace_string("", $2)/ge;
+        }
+        else {
+            # Note: Ignore strings that start with "\s*$"
+            s/($KEY_WORD_REGEX)\s+\"(\s*[^\$](?:[^"]+|\\\")+)\"/replace_string($1, $2)/ge;
+        }
+    };
+
+    $MODE =~ /^(?:fancy|strings)$/ and m/^\s*#\.(.*)/ and push @LABELS, "#$1";
+
+    $MODE eq "replace" and print $_;
+}
+
+$MODE eq "replace" and exit;
+
+for (@APPEND) {
+    replace_string("", $_);
+}
+
+my $fmt;
+for my $label (@LABELS) {
+    my $str = $STRING{$label};
+
+    # Only include comments in fancy output
+    $label =~ m/^#/ and do {
+        print "$label\n";
+        next;
+    };
+    if ($MODE eq "strings") {
+        printf "%s\n", $str;
+        next;
+    }
+
+    elsif ($MODE eq "plain") {
+        $fmt = qq{%s="\%s"\n};
+    }
+
+    else {
+        my $len = $str =~ m/^ / ? length $str : "";
+        $str =~ s/^\s+//;
+        $fmt = qq{printf "\%s=\\"%\%${len}s\\"\\n" "\$(gettext "\%s")"\n};
+    }
+
+    printf $fmt, $label, $str;
+}
+
+sub replace_string {
+    my ($key_word, $string) = @_;
+    my $label = $string;
+    $UP and do {
+        $string = uc $string;
+        $string =~ s/(%-?\d*[A-X])/lc $1/ge;
+    };
+
+    #exists $LABEL{$string} and return qq{$key_word \"\$$LABEL{$string}\"};
+
+    for (qw/X Y Z XX YY ZZ/) {
+        $label =~ s/%-?\d*[a-zA-Z]\b/$_/ or last;
+    }
+    $label =~ s/\\n//g;
+    $label =~ s/'//g;
+    $label =~ s/[^\s\w]+/ /g;
+    $label =~ s/^[_\s]+|[_\s+]$//;
+    $label =~ s/[_\s+]/_/g;
+    $label = "_${label}_";
+
+    $LABEL{$string} = $label;
+    $STRING{$label} = $string;
+    $LOCATION and push @LABELS, "#: $DOMAIN:$.";
+    push @LABELS, $label;
+    $VERBOSE and printf qq{  %-40s : "%s"\n}, $label, $string;
+    return qq{$key_word "\$$label"};
+}

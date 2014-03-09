@@ -1,0 +1,61 @@
+#!/bin/bash
+
+
+main() {
+
+    local dir=translations  project=antix-development
+    local resource=$1 pot_file=$2
+
+    local name=$project.$resource
+    local tdir=$dir/$name
+    local full_pot=$tdir/$pot_file
+
+
+    [ $# -eq 2 ]       || fatal "Must supply 2 parameters: resource pot-file"
+    [ -r "$full_pot" ] || fatal "Could not read pot-file $pot"
+
+    echo
+    echo  "     project: $project"
+    echo "     resource: $resource"
+    echo "     pot-file: $pot_file"
+    echo "      Command:"
+
+    echo tx set --auto-local -r $name "$tdir/<lang>.po" --type PO\
+        --source-lang en --source-file $full_pot --execute
+
+    echo
+    wait_key
+
+    tx set --auto-local -r $name "$tdir/<lang>.po" --type PO\
+        --source-lang en --source-file $full_pot --execute
+
+    echo tx push -s -r $name
+    echo
+    wait_key
+
+    tx push -s -r $name
+
+    echo tx push -t -r $name
+    echo
+    wait_key
+
+    tx push -t -r $name
+}
+
+wait_key() {
+    echo "Press <Enter> to continue, Ctrl-C to abort"
+    local xxxx
+    read xxxx
+}
+
+
+fatal() {
+    echo "$*"
+    exit 2
+}
+
+main "$@"
+
+# tx --auto-local -r antix-development.live-int 'translations/antix-devle
+# This command seemed to work:
+# tx set --auto-local -r antix-development.live-init 'new-po/init/<lang>.po' --source-lang en --source-file pot-files/init.pot --execute

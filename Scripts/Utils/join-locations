@@ -1,0 +1,11 @@
+#!/usr/bin/perl -i
+
+while(<>) {
+    m/^#\.?\s*:(.*)/ and do {
+        push @locs, $1;
+        next;
+    };
+    @locs and print "#:@locs\n";
+    @locs = ();
+    print;
+}
