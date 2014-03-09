@@ -1,3 +1,9 @@
+Note:
+-----
+YOU MUST use the tx client to create a translations/ subdirectory
+(or make a symlink named translations to that subdirectory).
+
+
 Introduction
 ------------
 This bundle automates many of the translation tasks for antiX and
