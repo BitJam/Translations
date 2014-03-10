@@ -50,6 +50,7 @@ Options:
   -d --domains=<file>  File containing domains        :$DOMAIN_FILE
   -f --force           Force update even if output is newer than source
   -h --help            Show this help
+  -k -skip             replace|en|strmaker|pot|mo
   -m --mo-only         Only make .mo files
   -o --outdir=<dir>    Output directory               :$OUTPUT_DIR
   -p --pretend         Don't write any files
@@ -81,7 +82,7 @@ main() {
 
         # Deal with all options that take a parameter
         case $arg in
-        -domains|-outdir|-renames|-stop-at|-transdir|[dorst]) 
+        -domains|-skip,-outdir|-renames|-stop-at|-transdir|[dkorst]) 
             [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
             val=$1
             [ -n "$val" -a -z "${val##-*}" ] \
@@ -92,10 +93,11 @@ main() {
         esac
 
         case $arg in
-          -domains|d) $DOMAIN_FILE=$val                ;;
-      -domains=*|d=*) $DOMAIN_FILE=$val                ;;
+          -domains|d) DOMAIN_FILE=$val                 ;;
+      -domains=*|d=*) DOMAIN_FILE=$val                 ;;
             -force|f) FORCE=true                       ;;
              -help|h) usage                            ;;
+             -skip|k) SKIP_AT=$SKIP_AT,$val            ;;
           -mo-only|m) MO_ONLY=true                     ;;
            -outdir|o) OUTPUT_DIR=$val                  ;;
        -outdir=*|o=*) OUTPUT_DIR=$val                  ;;
@@ -119,6 +121,14 @@ main() {
         replace|en|strmaker|pot|mo|"")                                     ;;
         *) fatal "--stop-after must be: replace, en, strmaker, pot, or mo" ;;
     esac
+
+    local stage
+    for stage in $(echo $SKIP_AT | sed 's/,/ /g'); do
+        case $stage in
+            replace|en|strmaker|pot|mo|xlat) ;;
+            *) fatal "Invalid skip stage: $stage" ;;
+        esac
+    done
 
     local input_files="$*"
     [ $# -eq 0 -a -n "$MO_ONLY" ] && input_files=$(grep "^\s*[a-zA-Z]" $DOMAIN_FILE)
@@ -176,7 +186,7 @@ main() {
             count=$((count + 1))
 
             mo_file=$mo_dir/$lang/LC_MESSAGES/$domain.mo
-            if is_older $mo_file $po_file; then
+            if not_skip_or_older mo $mo_file $po_file; then
                 vsay "  > $mo_file"
                 pretend mkdir -p $(dirname $mo_file)
                 pretend msgfmt -o $mo_file $po_file && mo_count=$((mo_count + 1))
@@ -193,7 +203,7 @@ main() {
                 continue
             fi
 
-            if is_older $xlat_file $str_maker $mo_file; then
+            if not_skip_or_older xlat $xlat_file $str_maker $mo_file; then
                 vsay "  > $xlat_file"
                 pretend mkdir -p $(dirname $xlat_file)
                 [ -z "$PRETEND" ] && LANGUAGE=$lang $str_maker > $xlat_file
@@ -246,7 +256,7 @@ prep_xlat() {
     [ $domain = init ] && init_opt="--init"
     
     local bin_file=$bin_dir/$domain
-    if is_older $bin_file $src_file; then
+    if not_skip_or_older replace $bin_file $src_file; then
         vsay "> $bin_file"
         pretend $CMD_REPLACE $REPLACE_OPTS $init_opt $src_file -o $bin_file
     fi
@@ -256,7 +266,7 @@ prep_xlat() {
     local opts=$PLAIN_OPTS
     local en_file=$xlat_dir/en/$domain.xlat
 
-    if is_older $en_file $src_file; then
+    if not_skip_or_older en $en_file $src_file; then
         vsay "> $en_file"
         pretend mkdir -p $(dirname $en_file)
         pretend $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file -o $en_file
@@ -265,7 +275,7 @@ prep_xlat() {
 
     stop_after en && continue
 
-    if is_older $str_maker $src_file; then
+    if not_skip_or_older strmaker $str_maker $src_file; then
         vsay "> $str_maker"
         pretend $CMD_REPLACE $FANCY_OPTS $init_opt $src_file -o $str_maker
         pretend chmod a+x $str_maker
@@ -274,7 +284,7 @@ prep_xlat() {
     stop_after strmaker && continue
 
     local pot_file=$POT_DIR/$domain.pot
-    if is_older $pot_file $str_maker; then
+    if not_skip_or_older $pot_file $str_maker; then
         vsay "> $pot_file"
         pretend mkdir -p $POT_DIR
         pretend xgettext $XGETTEXT_OPTS \
@@ -308,6 +318,16 @@ _find_tdir() {
         return 0
     done
     return 1
+}
+
+
+not_skip_or_older() {
+    local stage=$1
+    shift
+    case ,$SKIP_AT, in
+        ,$stage,) return 1;
+    esac
+    is_older "$@"
 }
 
 is_older() {
