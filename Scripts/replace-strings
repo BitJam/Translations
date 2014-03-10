@@ -177,8 +177,10 @@ sub replace_string {
     $label =~ s/\\n//g;
     $label =~ s/'//g;
     $label =~ s/[^\s\w]+/ /g;
+    #$label =~ s/^[\s]+|[\s+]$//;
     $label =~ s/^[_\s]+|[_\s+]$//;
-    $label =~ s/[_\s+]/_/g;
+    #$label =~ s/[\s+]/_/g;
+    $label =~ s/[_\s]+/_/g;
     $label = "_${label}_";
 
     $LABEL{$string} = $label;
