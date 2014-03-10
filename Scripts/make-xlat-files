@@ -214,7 +214,7 @@ main() {
 
         done
         po_count=$((po_count + count))
-        vvsayp $count "%n lang%s: $langs"
+        vvsay "%15s: %2d langs: %s" $domain $count "$langs"
         [ $count -eq 0 ] && warn "No languages for $domain"
 
         [ "$SINGLE_STEP" ] || continue
