@@ -18,12 +18,8 @@ cli-installer
 exitantix.sh
 group-management
 inxi-gui
-minstall_ents
 minstall
 mountbox
-muser_ents
-mx-codecs_ents
-mx-minstall_ents
 persist-config
 persist-makefs
 persist-save
