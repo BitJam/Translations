@@ -67,7 +67,7 @@ Usage
 
 main() {
 
-    local short_stack="dfhmoprstTvV" arg val
+    local short_stack="dfhmopqrstTvV" arg val
     while [ $# -gt 0 -a -z "${1##-*}" ]; do
         arg=${1#-}; shift
 
@@ -134,7 +134,7 @@ main() {
     [ $# -eq 0 -a -n "$MO_ONLY" ] && input_files=$(grep "^\s*[a-zA-Z]" $DOMAIN_FILE)
     [ $# -eq 0 -a -z "$MO_ONLY" ] && input_files=$(find $SRC_DIR -name "*$EXT")
 
-    vsayp $(echo "$input_files" | wc -w) "Start with %n domain name%s"
+    sayp $(echo "$input_files" | wc -w) "Start with %n domain name%s"
     vvsay "$input_files"
  
     local mo_dir=$MO_DIR
@@ -214,7 +214,7 @@ main() {
 
         done
         po_count=$((po_count + count))
-        vvsay "%15s: %2d langs: %s" $domain $count "$langs"
+        say "%15s: %2d langs:%s" $domain $count "$langs"
         [ $count -eq 0 ] && warn "No languages for $domain"
 
         [ "$SINGLE_STEP" ] || continue
