@@ -408,6 +408,7 @@ read_cmdline_params()
                       traceload) TRACE_LOAD=true                                 ;;
                  AUTOLOAD|ALOAD) FULL_AUTOLOAD=true; DO_AUTOLOAD=true            ;;
 
+                        delay=*) valid_int PREFIND_DELAY $param
                          init=*) INIT_PROG=$value                                ;;
 
                   nousb2|noehci) NO_EHCI=true                                    ;;
@@ -935,7 +936,7 @@ from_filter() {
 
     # First segregate devices by type
     local dev cd_devs hd_devs usb_devs other_devs
-    for dev in "$@"; do
+    for dev; do
         [ -b "$dev" ] || continue
         case $dev in
             /dev/sr[0-9]*|/dev/scd[0-9]*)
@@ -944,39 +945,34 @@ from_filter() {
             /dev/hd*)
                 hd_devs="$hd_devs $dev" ;;
 
-            /dev/sd*)
+            *|/dev/sd*)
                 if is_usb_or_removable $dev; then
                     usb_devs="$usb_devs $dev"
                 else
                     hd_devs="$hd_devs $dev"
                 fi ;;
 
-            *)
-                other_devs="$other_devs $dev" ;;
+            # Not used ATM, goes to hd or usb now
+            *)  other_devs="$other_devs $dev" ;;
         esac
     done
 
-    # then echo devices sorted by $FROM_TYPE but always start with other_devs
-    echo -n "$other_devs"
-
-    for i in $(seq 6); do
-        local type=$(echo $from_type | cut -d, -f$i)
-        [ "$type" ] || continue
+    local type
+    for type in $(echo $from_type | sed 's/,\+/ /g'); do
         case $type in
-            cd)
-                FILTERED_LIST="$FILTERED_LIST$cd_devs"
-                cd_devs=
-                ;;
-            usb)
-                FILTERED_LIST="$FILTERED_LIST$usb_devs"
-                usb_devs=
-                ;;
-            hd)
-                FILTERED_LIST="$FILTERED_LIST$hd_devs"
-                hd_devs=
-                ;;
-            *)
-                invalid_scan="$invalid_scan $type";;
+
+            cd) FILTERED_LIST="$FILTERED_LIST$cd_devs"
+                cd_devs= ;;
+
+            usb) FILTERED_LIST="$FILTERED_LIST$usb_devs"
+                usb_devs= ;;
+
+            hd) FILTERED_LIST="$FILTERED_LIST$hd_devs"
+                hd_devs= ;;
+
+           "") ;;
+
+            *) invalid_scan="$invalid_scan $type";;
         esac
     done
 
@@ -1428,7 +1424,7 @@ link_top_dirs() {
     local mp=$1  dir  mp_dir
     shift
     vmsg 7 -n 'symlink: '
-    for dir in $@; do
+    for dir; do
         mp_dir=$mp/$dir
         [ -d $mp_dir ] || continue
         rm -rf /$dir
@@ -1441,7 +1437,7 @@ link_top_dirs() {
 try_mount() {
     local dev=$1  mp=$2  rw=${3:-$RW_MODE}
     local LABEL UUID TYPE
-    eval local $(blkid $dev |  sed -r 's/^[^:]+://')
+    eval local $(blkid $dev | sed -r 's/^[^:]+://')
     [ "$TYPE" ] || return 1
     case $TYPE in
             vfat) mount -t vfat -o $rw,umask=000,shortname=winnt  "$dev" "$mp" 2>/dev/null ;;
@@ -1690,7 +1686,6 @@ breakpoint() {
     echo
 }
 
-
 db_msg() { vmsg 5 "${green}db+:$hi_co $@" ;}
 err()    { vmsg 1 "$err_co$@" >&2         ;}
 msg()    { vmsg 5 "$@"                    ;}
@@ -1786,7 +1781,7 @@ _error() {
         err "$type"
         [ "$1" ] && msg "${hi_co}$1"
         shift
-        for arg in "$@"; do
+        for arg in; do
             msg "$arg"
         done
         warn $hbar
@@ -2301,7 +2296,7 @@ do_remaster() {
     return 0
 }
 
-most_block_devices() { find /dev -type b | egrep -v "/ram|/loop" ; }
+most_block_devices() { find /dev -type b | egrep -v "/ram|/loop|/fd" ; }
 
 #------------------------------------------------------------------------------
 # Function: copy_to_ram
