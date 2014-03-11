@@ -1,0 +1,98 @@
+#!/bin/bash
+
+ME=${0##*/}
+MY_DIR=$(dirname $(readlink -f $0))
+
+SYMMETRIC=true
+
+usage() {
+    ret=${1:-0}
+    cat <<Usage
+Usage: $ME Dir-A Dir-B
+
+Compare all files found under Dir-A with the corresponding
+files under Dir-B.  For each A-file, report if the B-file
+exists, and if so wether they match or if which one is
+bigger.
+Usage
+    exit $ret
+}
+
+main() {
+    [ $# -eq 2 ] || usage 2
+    local dir_a=${1%/}  dir_b=${2%/}
+
+    [ -d $dir_a ] || fatal "$dir_a is not a directory"
+    [ -d $dir_b ] || fatal "$dir_b is not a directory"
+
+    local width=0 len stem file_a file_b
+    for file_a in $(find $dir_a -type f); do
+        stem=${file_a#$dir_a/}
+        len=${#stem}
+        [ $width -lt $len ] && width=$len
+    done
+
+    if [ "$SYMMETRIC" ]; then
+        for file_b in $(find $dir_b -type f); do
+            stem=${file_b#$dir_b/}
+            len=${#stem}
+            [ $width -lt $len ] && width=$len
+        done
+    fi
+
+    local format="%-${width}s %2s %8s %8s\n"
+    printf "$format" "" "" "  A" "  B"
+
+    local found
+    local a_only=0  b_only=0 a_larger=0 b_larger=0
+    local file_a file_b size_a size_b md5_a md5_b
+    for file_a in $(find $dir_a -type f | sort); do
+        stem=${file_a#$dir_a/}
+        [ "$SYMMETRIC" ] && found="$found,$stem"
+        file_b=$dir_b/$stem
+
+        size_a=$(stat -c %s $file_a)
+        if [ ! -e $file_b ]; then
+            result='Mb'
+            size_b=0
+            a_only=$((a_only + 1))
+        else
+            size_b=$(stat -c %s $file_b)
+            if [ $size_a -gt $size_b ]; then
+                result="G"
+            elif [ $size_a -lt $size_b ]; then
+                result="L"
+            else
+                md5_a=$(md5sum $file_a | cut -d" " -f1)
+                md5_b=$(md5sum $file_b | cut -d" " -f1)
+                result="-"
+                [ "$md5_a" = "$md5_b" ] && result="="
+            fi
+        fi
+        printf "$format" "$stem" $result $size_a $size_b
+    done
+
+    [ "$SYMMETRIC" ] || exit 0
+
+    for file_b in $(find $dir_b -type f | sort); do
+
+        b_only=$((b_only + 1))
+        stem=${file_b#$dir_b/}
+
+        case ,$found, in
+            *,$stem,*) continue;;
+        esac
+
+        size_b=$(stat -c %s $file_b)
+        printf "$format" "$stem" Ma 0 $size_b
+    done
+}
+
+fatal() {
+    printf "$ME: fatal error: $@" >&2
+    echo
+    exit 2
+}
+
+
+main "$@"
