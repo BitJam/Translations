@@ -284,7 +284,7 @@ prep_xlat() {
     stop_after strmaker && continue
 
     local pot_file=$POT_DIR/$domain.pot
-    if not_skip_or_older $pot_file $str_maker; then
+    if not_skip_or_older pot pot $pot_file $str_maker; then
         vsay "> $pot_file"
         pretend mkdir -p $POT_DIR
         pretend xgettext $XGETTEXT_OPTS \
@@ -325,7 +325,7 @@ not_skip_or_older() {
     local stage=$1
     shift
     case ,$SKIP_AT, in
-        ,$stage,) return 1;
+        *,$stage,*) return 1;
     esac
     is_older "$@"
 }
