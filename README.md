@@ -111,7 +111,7 @@ Scripts reside under the Scripts/ directory.
 
 <dl>
 
-  <dt>`replace-strings`</dt>
+  <dt>replace-strings</dt>
 
   <dd>Main tool to make .xlat files.  This tool will replace
   English strings in a script with variable names.  It will also
@@ -120,7 +120,7 @@ Scripts reside under the Scripts/ directory.
   that writes a script to define the variables which is how we do
   the translation </dd>
 
-  <dt>`make-xlat-files`</dt>
+  <dt>make-xlat-files</dt>
 
   <dd>The next level up from `replace-strings`.  This
   script calls replace-strings and the get gettext utilities
@@ -129,7 +129,7 @@ Scripts reside under the Scripts/ directory.
   instead of calling it via the Makefile.</dd>
 
 
-  <dt>`validate-xlat`</dt>
+  <dt>validate-xlat</dt>
   <dd>Validate .xlat files.  Since the .xlat files are executed,
   it is possible for there to be unwanted code execution, for
   example *"Say Hello $(rm -rf /)!"*.  If there are hidden bombs
@@ -137,7 +137,7 @@ Scripts reside under the Scripts/ directory.
   be run as root.  It also makes sure *no* interpolation happens
   in the strings in the .xlat files.</dd>
 
-    <dt>`compare-dirs`</dt>
+    <dt>compare-dirs</dt>
     <dd>A simple tool to compare all the files under two
     different directories.  Used to compare old and new
     .mo and .xlat files.  Very useful but still a work in
@@ -159,45 +159,45 @@ make-xlat-files directly.
 
 <dl>
 
-  <dt>**all**</dt>
+  <dt>all</dt>
   <dd>Create all output scripts,  .xlat files, and .mo
   files</dd>
 
-  <dt>**xlat**</dt>
+  <dt>xlat</dt>
     <dd>Create all output scripts and .xlat files.</dd>
 
-  <dt>**mo**</dt>
+  <dt>mo</dt>
   <dd>Create all output .mo files.  These will end up
     under $DISTRO/usr/share/locale</dd>
 
-  <dt>**validate**</dt>
+  <dt>validate</dt>
   <dd>Validate all .xlat files that have been created.</dd>
 
-  <dt>**clean**</dt>
+  <dt>clean</dt>
   <dd> Delete all output and intermediate files and
   directories</dd>
 
-  <dt>**force-all**<dt>
+  <dt>force-all<dt>
   <dd>Force all outputs to be created from scatch.  No dependency
   checking.  This is like -B for normal Makefiles</dd>
 
-  <dt>**force-xlat**</dt>
+  <dt>force-xlat</dt>
   <dd>Force output scripts and .xlat files to be created.</dd>
 
-  <dt>**force-mo**</dt>
+  <dt>force-mo</dt>
   <dd>Force all output .mo files to be created.</dd>
 
-  <dt>**initrd**</dt>
+  <dt>initrd</dt>
   <dd>Force /init script and init.xlat to be created.</dd>
 
-  <dt>**install-initrd**</dt>
+  <dt>install-initrd</dt>
   <dd>Copy Initrd/ directory to INITRD_IDIR directory.</dd>
 
-  <dt>**install**<dt>
+  <dt>install<dt>
   <dd>Copy all files under Output/ to the / file system.  Change
   the location it is copied with the PREFIX variable.  </dd>
 
-  <dt>**uninstall**</dt>
+  <dt>uninstall</dt>
   <dd>Delete all files and directories that were copied with a
   "make install".  It uses the file under Output/ to determine
   what to delete.  Maybe be unsafe.</dd>
