@@ -43,6 +43,8 @@
        DISTRO_FILE="/init.conf"
            LOG_DIR="/var/log/live"
           LOG_FILE="$LOG_DIR/bootstrap.log"
+           ERR_LOG="bootstrap.errors"
+
             MY_LOG=/init.log
            VID_DIR="/etc/live/version"
           VID_FILE="$VID_DIR/linuxfs.ver"
@@ -118,6 +120,8 @@ main() {
     mount -t proc   proc  /proc
     mount -t sysfs  sys   /sys
 
+    local time_0=$(cut -d" " -f22 /proc/$$/stat)
+
     make_nodes /dev
 
     custom_code $DISTRO_FILE
@@ -135,9 +139,60 @@ main() {
 
     echo "$PRINTK" > /proc/sys/kernel/printk
 
+    if [ "$NO_ERR_LOG" ]; then
+        main_two
+    else
+        touch /$ERR_LOG
+
+        (tail -f /$ERR_LOG | while read line; do echo "$line" \
+            | /live/bin/sed -e "s/^/$err_co/" -e "s/$/$nc/" | /live/bin/tee -a $MY_LOG; done) \
+            2>/dev/null &
+
+        TAIL_PID=$!
+
+        main_two 2>> /$ERR_LOG
+
+        msg "tail pid: $TAIL_PID"
+
+        breakpoint t "after main_two"
+
+        #exec 2>&-
+        pkill -9 -P $TAIL_PID
+        #exec 2>&1
+
+        mkdir -p /live/aufs/var/log/live
+        cp $ERR_LOG /live/aufs/var/log/live/
+
+        echo test error 2  >&2
+    fi
+
+    breakpoint 9 "right before starting init"
+
+    if find_init_prog INIT_PROG $NEW_ROOT; then
+
+        vmsg 4 'Run %s instead of %s' $white$INIT_PROG$m_co $white/sbin/init$m_co
+        vmsg 5 "${hi_co}%s" "Please exit shells normally to allow for a clean unmount"
+
+        system_mount $NEW_ROOT full
+
+        CHROOT_BIN=$FINAL_DIR/bin
+        chroot $NEW_ROOT $CHROOT_BIN/setsid $CHROOT_BIN/cttyhack $INIT_PROG
+
+        breakpoint 10 "after init= chroot"
+        safe_shutdown poweroff ask
+
+    else
+        vmsg 6 'Start %s process' init
+        exec $LIVE_BIN/switch_root -c /dev/console $NEW_ROOT /sbin/init "$@"
+    fi
+}
+
+main_two() {
     [ "$NO_CLEAR" ] || printf "\e[1J"       # Clear and reset screen
     vmsg 6 "=== $0 bootstrap =================================================="
-    local time_0=$(cut -d" " -f22 /proc/$$/stat)
+
+    echo test normal
+    echo test error >&2
 
     read_xlat init $LANG
 
@@ -262,29 +317,8 @@ main() {
     vmsg 4 "The %s program took %s seconds" $0 $(nq $(get_seconds $dt))
     vmsg 6 $hbar
 
-    write_log_files_old $LOG_FILE
-
-    breakpoint 9 "right before starting init"
-
-    if find_init_prog INIT_PROG $NEW_ROOT; then
-
-        vmsg 4 'Run %s instead of %s' $white$INIT_PROG$m_co $white/sbin/init$m_co
-        vmsg 5 "${hi_co}%s" "Please exit shells normally to allow for a clean unmount"
-
-        system_mount $NEW_ROOT full
-
-        CHROOT_BIN=$FINAL_DIR/bin
-        chroot $NEW_ROOT $CHROOT_BIN/setsid $CHROOT_BIN/cttyhack $INIT_PROG
-
-        breakpoint 10 "after init= chroot"
-        safe_shutdown poweroff ask
-
-    else
-        vmsg 6 'Start %s process' init
-        exec $LIVE_BIN/switch_root -c /dev/console $NEW_ROOT /sbin/init "$@"
-    fi
+    write_log_files $LOG_FILE
 }
-
 
 #------------------------------------------------------------------------------
 # Getting started
@@ -408,11 +442,11 @@ read_cmdline_params()
                       traceload) TRACE_LOAD=true                                 ;;
                  AUTOLOAD|ALOAD) FULL_AUTOLOAD=true; DO_AUTOLOAD=true            ;;
 
-                        delay=*) valid_int PREFIND_DELAY $param
                          init=*) INIT_PROG=$value                                ;;
 
                   nousb2|noehci) NO_EHCI=true                                    ;;
 
+                       noerrlog) NO_ERR_LOG=true                                 ;;
                            mdev) USE_MDEV=true                                   ;;
                          nomdev) USE_MDEV=                                       ;;
                livedir=*|ldir=*) FINAL_DIR=$value                                ;;
@@ -1726,8 +1760,8 @@ vmsg() {
     fi
 
     [ "$level" -le "$VERBOSE" ] && printf "$msg"
-    #echo -ne "$msg" >> /init.log
-    LOG="$LOG$msg"
+    echo -ne "$msg" >> $MY_LOG
+    #LOG="$LOG$msg"
 
     return 0
 }
@@ -3070,6 +3104,4 @@ prepare_switch_root() {
 #==============================================================================
 # What was last shall be first
 main "$@"
-
-#main  7>&1 1>&2 2>&7 | tee -a /error.log
 #==============================================================================
