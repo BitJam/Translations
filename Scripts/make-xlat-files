@@ -82,14 +82,14 @@ main() {
 
         # Deal with all options that take a parameter
         case $arg in
-        -domains|-skip,-outdir|-renames|-stop-at|-transdir|[dkorst]) 
-            [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
-            val=$1
-            [ -n "$val" -a -z "${val##-*}" ] \
-                && fatal "Suspicious argument after -$arg: $(pqw $val)"
-            shift           ;;
-        *=*)  val=${arg#*=} ;;
-        *)  val="???"       ;;
+            -domains|-skip|-outdir|-renames|-stop-at|-transdir|[dkorst]) 
+                [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
+                val=$1
+                [ -n "$val" -a -z "${val##-*}" ] \
+                    && fatal "Suspicious argument after -$arg: $(pqw $val)"
+                shift           ;;
+            *=*)  val=${arg#*=} ;;
+            *)  val="???"       ;;
         esac
 
         case $arg in
@@ -97,7 +97,7 @@ main() {
       -domains=*|d=*) DOMAIN_FILE=$val                 ;;
             -force|f) FORCE=true                       ;;
              -help|h) usage                            ;;
-             -skip|k) SKIP_AT=$SKIP_AT,$val            ;;
+             -skip|k) SKIP_AT="$SKIP_AT,$val"          ;;
           -mo-only|m) MO_ONLY=true                     ;;
            -outdir|o) OUTPUT_DIR=$val                  ;;
        -outdir=*|o=*) OUTPUT_DIR=$val                  ;;
