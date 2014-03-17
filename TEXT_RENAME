@@ -1,3 +1,4 @@
 remaster-live:remaster-me
 update-default-desktop:change-default-desktop
-init:live-init
+#init:live-init
+init:xlate-linuxrc
