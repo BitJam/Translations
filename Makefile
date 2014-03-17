@@ -6,7 +6,7 @@ OUT_DIR         := Output
 
 XLAT_DIR        := $(OUT_DIR)/usr/share/antiX/init-xlat
 
-INITRD_IDIR		:= $(HOME)/Projects/antiX/LiveUSB/initrd
+INITRD_IDIR		:= ../LiveUSB/14-alpha-2/initrd
 
 
 INITRD_DIR      := Initrd
@@ -98,7 +98,7 @@ validate:
 #	$(CMD_REPLACE) --init --mode=plain   -o $(INITRD_XLAT_DIR)/en/init.xlat $<
 
 install-initrd:
-	$(CMD_MAKE_XLAT) --verbose --force init
+	$(CMD_MAKE_XLAT) --verbose --force --stop-at=en init
 	/live/bin/sh -n $(INITRD_DIR)/init
 	[ -d $(INITRD_IDIR) ] && cp -a $(INITRD_DIR)/* $(INITRD_IDIR)
 
