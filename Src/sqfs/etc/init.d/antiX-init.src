@@ -136,9 +136,21 @@ set_dpi() {
         error "Invalid %s boot parameter %s" $(pquote dpi) $(pquote $dpi)
         return
     fi
-    echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi)
-    sed -i -e "s/^xserver_arguments.*/xserver_arguments -dpi $dpi -nolisten tcp/" \
-        /etc/slim.conf /usr/share/slim/themes/antiX/slim-install.conf
+
+    local file
+    for file in /etc/slim.conf /usr/share/slim/themes/antiX/slim-install.conf; do
+        [ -e $file ] || continue
+        echo_live 'In file: %s' $(pquote $file)
+        echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi) 
+        sed -i -e "s/^xserver_arguments.*/xserver_arguments -dpi $dpi -nolisten tcp/" $file
+    done
+
+    for file in /etc/lightdm/lightdm.conf; do
+        [ -e $file ] || continue
+        echo_live "In file: %s" $(pquote $file)
+        echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi) 
+        sed -i -r "s/^#?\s*(xserver-command=X).*/\1 -dpi $dpi/" $file
+    done
 }
 
 set_mirror() {
@@ -254,7 +266,7 @@ set_default_desktop() {
 }
 
 add_fstab_swap() {
-    echo_live "Possibly adding swap parititions to fstab"
+    echo_live 'Possibly adding swap partitions to fstab'
     make-fstab --verbose --swap-only
 }
 
@@ -345,7 +357,7 @@ automount_and_fstab() {
     case $DISTRO in
         antiX) automount_and_fstab;;
       MX|MX-*) add_fstab_swap     ;;
-            *) error "Unknown_distro %s" "$(pquote $DISTRO)"
+            *) error 'Unknown_distro %s' "$(pquote $DISTRO)"
     esac   
 
     #-jbb: for debugging
