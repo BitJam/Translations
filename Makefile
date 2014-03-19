@@ -8,6 +8,7 @@ XLAT_DIR        := $(OUT_DIR)/usr/share/antiX/init-xlat
 
 INITRD_IDIR		:= ../LiveUSB/14-alpha-2/initrd
 
+DOMAINS_FILE    := MX_NAMES
 
 INITRD_DIR      := Initrd
 INITRD_XLAT_DIR := $(INITRD_DIR)/live/locale/xlat
@@ -19,6 +20,8 @@ STD_OPTS        := --outdir=$(OUT_DIR)
 SCRIPT_DIR      := Scripts
 CMD_MAKE_XLAT   := $(SCRIPT_DIR)/make-xlat-files $(STD_OPTS)
 CMD_MAKE_MO     := $(SCRIPT_DIR)/make-xlat-files --mo-only $(STD_OPTS)
+CMD_MAKE_MO     += --domains $(DOMAINS_FILE)
+
 CMD_VALIDATE    := $(SCRIPT_DIR)/validate-xlat
 CMD_REPLACE     := $(SCRIPT_DIR)/replace-strings
 XGETTEXT        := xgettext --add-comments --language=Shell --no-location
