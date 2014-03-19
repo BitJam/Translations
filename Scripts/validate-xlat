@@ -106,7 +106,7 @@ validate_xlat() {
         err "Not sourcing suspicious file $file"
         FAILED=$((FAILED + 1))
         [ "$QUIET" ] && return 2
-        egrep -vn "^_[A-Za-z0-9_]\+_=" $file | head -n5
+        egrep -vn "^_[A-Za-z0-9_]+_=" $file | head -n5
         return 2
     fi
 
