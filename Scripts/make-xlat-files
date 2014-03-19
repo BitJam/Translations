@@ -248,8 +248,8 @@ prep_xlat() {
     local init_opt bin_dir src_dir=$(dirname $src_file)
     src_dir=${src_dir#Src/}
     case $src_dir/ in
-        live-initrd/*) bin_dir=$INITRD_DIR${src_dir#live-initrd}      ;;
-               sqfs/*) bin_dir=$OUTPUT_DIR${src_dir#sqfs}             ;;
+        initrd/*) bin_dir=$INITRD_DIR${src_dir#initrd}                ;;
+          sqfs/*) bin_dir=$OUTPUT_DIR${src_dir#sqfs}                  ;;
         *) warn "Unrecognized source directory: $src_dir" && continue ;;
     esac
 

@@ -12,9 +12,6 @@
 # Description: localize /etc/skel, create /home/demo, customize X, mirrors, set default desktop
 ### END INIT INFO
 
-# GETTEXT_KEYWORD="echo_live"
-# GETTEXT_KEYWORD="echo_script"
-
 case "$1" in
     start)
         ;;
@@ -278,7 +275,7 @@ automount_and_fstab() {
    local  hp_state_file=$hp_file.state
 
     # "off" means "off"
-    if [ "$CMD_MOUNT" = "off" -o -n "$AUTOMOUNT_OFF" ]; then
+    if [ "$CMD_MOUNT" = 'off' -o -n "$AUTOMOUNT_OFF" ]; then
         echo_live "Turning all boot mount options off"
         rm -f $mount_file
         CMD_MOUNT=
@@ -305,7 +302,7 @@ automount_and_fstab() {
         ,)
             ;;
         *)
-            error "Invalid %s option %s" "mount/automount" $(pquote $CMD_MOUNT)
+            error "Invalid %s option %s" 'mount/automount' $(pquote $CMD_MOUNT)
     esac
 
     echo_live "Building %s via %s" "$(pquote /etc/fstab)" "$(pquote "make-fstab $fstab_opt")"
@@ -362,7 +359,7 @@ automount_and_fstab() {
 
     #-jbb: for debugging
     unset COUNTRY WM_LANG KEYBOARDS KEYTABLE LANG MIRROR TZ XKBLAYOUT CONSOLE_FONT
-    [ "$CMD_LANG" ] && get_init_lang $CMD_LANG "error"
+    [ "$CMD_LANG" ] && get_init_lang $CMD_LANG error
 
     usb_rules=/etc/udev/rules.d/99-usbstorage.rules
     usb_unused=$usb_rules.unused
