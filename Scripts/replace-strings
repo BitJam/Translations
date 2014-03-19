@@ -45,7 +45,7 @@ Options
     --location        Add comments giving location in source file
     --keys <a,b,c>    Words to key translation off of:
                       Default: @KEY_WORDS
-    --mode=<mode>     fancy|plain|replace|raw
+    --mode=<mode>     fancy|plain|replace|strings
     --output=<file>   Send output to <file> instead of stdout
     --quiet           print less
     --STOP <words>    Ignore text preceded by any of these words
