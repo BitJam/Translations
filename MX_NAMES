@@ -1,6 +1,7 @@
 antix-bash-libs
 cli-installer
 persist-config
+persist-makefs
 persist-save
 remaster-live
 remastercc.sh
