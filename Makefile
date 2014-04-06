@@ -60,7 +60,9 @@ help:
 	@echo ""
 	@echo "      force-mo: Force creation  of all .mo files."
 	@echo ""
-	@echo "        initrd: Force creation of /init script and init.xlat."
+	@echo "        initrd: Create /init script and init.xlat files"
+	@echo ""
+	@echo "  force-initrd: Force creation of /init script and init.xlat files"
 	@echo ""
 	@echo "install-initrd: Install /init and init.xlat.  Used for testing."
 	@echo ""
@@ -102,6 +104,8 @@ validate:
 
 install-initrd:
 	$(CMD_MAKE_XLAT) --verbose --force --stop-at=en init
+	@#$(CMD_MAKE_XLAT) --verbose --force init
+	chmod a+x $(INITRD_DIR)/init
 	/live/bin/sh -n $(INITRD_DIR)/init
 	[ -d $(INITRD_IDIR) ] && cp -a $(INITRD_DIR)/* $(INITRD_IDIR)
 
