@@ -1,6 +1,5 @@
 #!/bin/sh
 
-XXXs
 #==============================================================================
 # LiveCD/USB/HD init script
 # (C) 2009-2014 BitJam for antiX <antiX@operamail.com>
@@ -1009,7 +1008,7 @@ _find_files() {
         #-- delay every time except inside first second
         if [ "$do_delay" ]; then
             if [ -z "$said_retry" ]; then
-                vmsg 4 -n "Retry for %s seconds " $(nq $retry_time)
+                vmsgN 4 "Retry for %s seconds " $(nq $retry_time)
                 vmsg_if $vthresh " ..."
                 said_retry=true
             fi
@@ -1017,7 +1016,7 @@ _find_files() {
             [ "$FULL_AUTOLOAD" ] && autoload_modules
 
             # Normally just print out a dot for each iteration
-            [ "$be_verbose" ] || msg -n $dot
+            [ "$be_verbose" ] || msgN $dot
 
             # Adjust sleep time dynamically to account for previous time
             # through the loop
@@ -1385,13 +1384,13 @@ mount_aufs() {
 link_top_dirs() {
     local mp=$1  dir  mp_dir
     shift
-    vmsg 7 -n 'symlink: '
+    vmsgN 7 'symlink: '
     for dir; do
         mp_dir=$mp/$dir
         [ -d $mp_dir ] || continue
         rm -rf /$dir
         ln -s $mp_dir /$dir
-        vmsg 7 -n "$white/$dir "
+        vmsgN 7 "$white/$dir "
     done
     vmsg 7
 }
@@ -1650,9 +1649,11 @@ breakpoint() {
 db_msg() { vmsg 5 "${green}db+:$hi_co $@" ;}
 err()    { vmsg 1 "$err_co$@"             ;}
 msg()    { vmsg 5 "$@"                    ;}
+msgN()   { vmsgN 5 "$@"                   ;}
 msg_nc() { vmsg 5 "$nc_co$@"              ;}
 warn()   { vmsg 3 "$warn_co$@"            ;}
 
+bq()     { echo "$yellow$*$m_co"          ;}
 cq()     { echo "$cheat_co$*$m_co"        ;}
 cqw()    { echo "$cheat_co$*$warn_co"     ;}
 cqe()    { echo "$cheat_co$*$err_co"      ;}
@@ -1662,6 +1663,7 @@ fq()     { echo "$from_co$*$m_co"         ;}
 fqe()    { echo "$from_co$*$err_co"       ;}
 mpq()    { echo "$mp_co$*$m_co"           ;}
 nq()     { echo "$num_co$*$m_co"          ;}
+nqw()    { echo "$num_co$*$warn_co"       ;}
 pq()     { echo "$hi_co$*$m_co"           ;}
 pqe()    { echo "$hi_co$*$err_co"         ;}
 pqw()    { echo "$hi_co$*$warn_co"        ;}
@@ -1674,7 +1676,7 @@ get_seconds() {
     printf "%02d" $dt | sed -r 's/(..)$/.\1/'
 }
 
-vmsg() {
+vmsg_old() {
     local msg nflag  level=$1; shift
 
     [ "$1" = "-n" ] && nflag=true && shift
@@ -1693,6 +1695,28 @@ vmsg() {
     return 0
 }
 
+vmsg() {
+    local level=$1  fmt=$2
+    shift 2
+
+    msg=$(printf "$m_co$fmt$nc_co" "$@")
+
+    [ "$level" -le "$VERBOSE" ] && printf "$msg\n"
+    echo -e "$msg" >> $MY_LOG
+    return 0
+}
+
+vmsgN() {
+    local level=$1  fmt=$2
+    shift 2
+
+    msg=$(printf "$m_co$fmt$nc_co" "$@")
+
+    [ "$level" -le "$VERBOSE" ] && printf "$msg"
+    echo -ne "$msg" >> $MY_LOG
+    return 0
+}
+
 vmsg_if() {
     local level=$1; shift
     [ "$VERBOSE" -ge "$level" ] || return
@@ -1707,7 +1731,7 @@ vmsg_nc() {
 heading() {
     vmsg 6 $head_co$tbar
     #. Begin [doing some sub process]
-    vmsg 3 -n "$head_co%s " "Begin"
+    vmsgN 3 "$head_co%s " "Begin"
     vmsg 3 "$@"
 }
 
@@ -1828,7 +1852,7 @@ safe_shutdown() {
     final_umount && vmsg 1 "Unmount successful"
     breakpoint u "final umount"
     if [ "$ask" ]; then
-        vmsg 1 -n "Press <Enter> to %s" "$white$cmd$m_co"
+        vmsgN 1 "Press <Enter> to %s" "$white$cmd$m_co"
         read x
     fi
     vmsg -1 "Will now %s the system" "$white$cmd$m_co"
@@ -2093,7 +2117,7 @@ do_delay() {
     [ -z "$cnt" -o "$cnt" = "0" ] && return
     [ $# -gt 0 ] && msg "$@"
     while [ "$cnt" -gt "0" ]; do
-        msg -n "$hi_co$cnt "
+        msgN "$hi_co$cnt "
         cnt=$((cnt - 1))
         sleep 1
     done
@@ -2148,7 +2172,7 @@ find_crypt_device() {
         try=$((try + 1))
         #-- delay every time but the first
         if ! [ "$try" = "0" ]; then
-            [ "$try" = "1" ] && msg -n "%s " "retrying"
+            [ "$try" = "1" ] && msgN "%s " "retrying"
 
             current_t=$(get_time)
             dt=$((current_t - loop_t1))
@@ -2158,7 +2182,7 @@ find_crypt_device() {
 
             [ $usleep -gt 0 ] && usleep $usleep
 
-            msg -n "."
+            msgN "."
 
         fi
         loop_t1=$(get_time)
@@ -2755,10 +2779,10 @@ copy_xtra() {
     local list=$(ls $xtra_dir)
     [ -n "$list" ] || return
 
-    msg -n 'Copy xtra file(s) to:'
+    msgN 'Copy xtra file(s) to:'
     for  dir in $list; do
         [ -d "$xtra_dir/$dir" ] || continue
-        msg -n " $from_co/$dir"
+        msgN " $from_co/$dir"
         cp -a $xtra_dir/$dir $NEW_ROOT/
     done
     msg
