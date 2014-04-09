@@ -2,9 +2,10 @@ SHELL           := /bin/bash
 
 PREFIX          :=
 OUT_DIR         := Output
+TRANS_DIR       := translations
 
 #INITRD_IDIR	 := ../LiveUSB/14-alpha-2/initrd
-#DOMAINS_FILE    := ANTIX_NAMES
+DOMAINS_FILE    := ANTIX_NAMES
 
 -include Makefile.local
 
@@ -78,21 +79,33 @@ all: mo xlat
 force-all: force-xlat force-mo
 
 xlat:
+	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
+	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose
 
 force-xlat:
+	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
+	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose --force
 
 mo:
+	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
+	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_MO) --verbose
 
 force-mo:
+	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
+	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_MO) --verbose
 
 initrd:
+	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
+	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose init
 
 force-initrd:
+	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
+	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose --force init
 
 validate:
@@ -108,7 +121,6 @@ install-initrd:
 	chmod a+x $(INITRD_DIR)/init
 	/live/bin/sh -n $(INITRD_DIR)/init
 	[ -d "$(INITRD_IDIR)" ] && cp -a $(INITRD_DIR)/* $(INITRD_IDIR)
-
 
 install: $(TARG_FILES)
 	@:
