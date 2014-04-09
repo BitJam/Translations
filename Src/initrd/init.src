@@ -97,9 +97,9 @@ tbar="----------------------------------------------------------------------"
 main_wrapper() {
 
     local black blue green cyan red purple brown lt_gray dk_gray lt_blue
-    local lt_green lt_cyan lt_red magenta yellow white rev_red nc
+    local lt_green lt_cyan lt_red magenta yellow white rev_red 
     local cheat_co cmd_co dev_co err_co from_co to_co head_co
-    local hi_co mp_co m_co nc_co num_co ok_co
+    local hi_co mp_co m_co nc_co num_co ok_co bold_co 
 
     PATH=$LIVE_BIN
     HOME=/
@@ -141,7 +141,7 @@ main_wrapper() {
         main_core
     else
         main_core 7>&1 1>&2 2>&7  | while read line; do echo "$line" \
-            | sed -e "s/^/${yellow}Error: $red/" -e "s/$/$nc/" | tee -a $MY_LOG; done
+            | sed -e "s/^/${yellow}Error: $red/" -e "s/$/$nc_co/" | tee -a $MY_LOG; done
     fi
 
     write_log_files $MY_LOG $LOG_FILE
@@ -2134,12 +2134,12 @@ set_colors() {
        red="$e[0;31m";  purple="$e[0;35m";    brown="$e[0;33m"; lt_gray="$e[0;37m";
    dk_gray="$e[1;30m"; lt_blue="$e[1;34m"; lt_green="$e[1;32m"; lt_cyan="$e[1;36m";
     lt_red="$e[1;31m"; magenta="$e[1;35m";   yellow="$e[1;33m";   white="$e[1;37m";
-        nc="$e[0m";
+     nc_co="$e[0m";
 
-    cheat_co=$white;      err_co=$red;       hi_co=$white;      nc_co=$nc;
+    cheat_co=$white;      err_co=$red;       hi_co=$white;
       cmd_co=$white;     from_co=$lt_green;  mp_co=$magenta;   num_co=$magenta;
       dev_co=$magenta;   head_co=$yellow;     m_co=$lt_cyan;    ok_co=$lt_green;
-       to_co=$lt_green;  warn_co=$yellow;
+       to_co=$lt_green;  warn_co=$yellow;  bold_co=$yellow;
 
     [ "$loco" ] || return
 
