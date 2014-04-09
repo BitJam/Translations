@@ -1789,7 +1789,7 @@ _error() {
 
     breakpoint e "On possibly fatal error"
 
-    PROMPT="$green    Select ${yellow}$cmsg1 p$green or$yellow r$green then hit <enter>$nc_co "
+    local prompt="${green}Select ${yellow}$cmsg1 p$green or$yellow r$green then hit <enter>"
 
     local fmt="    $yellow%s$cyan =$white %s$nc_co\n"
     local reply
@@ -1801,7 +1801,8 @@ _error() {
         printf "$fmt" r "reboot"
 
         echo $m_co$tbar$nc_co
-        read -p  "$PROMPT" reply
+        echo -n "$prompt$nc_co "
+        read reply
         case $reply in
             p*|P*)
                 echo "power off" " ..."
@@ -1814,7 +1815,7 @@ _error() {
              c*|C*)
                  [ "$cmsg1" ] && return;;
         esac
-        printf "\n${m_co} %s: >>$yellow$reply$m_co<<. %s:$nc_co" \
+        printf "\n${m_co} %s: >>$yellow$reply$m_co<<. %s:$nc_co\n" \
             "Unknown command" "Please try again"
     done
 }
