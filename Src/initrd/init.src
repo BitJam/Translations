@@ -168,7 +168,7 @@ main_wrapper() {
         CHROOT_BIN=$FINAL_DIR/bin
         chroot $NEW_ROOT $CHROOT_BIN/setsid $CHROOT_BIN/cttyhack $INIT_PROG
 
-        breakpoint 10 "after init= chroot"
+        breakpoint ch "after init= chroot"
         safe_shutdown poweroff ask
 
     else
@@ -222,17 +222,23 @@ main_core() {
 
     find_linuxfs_file
 
+    RW_MODE=rw
+    # FIXME: this makes debuggingg persist_makefs simpler
+    #[ "$PERSIST_FILES" ] && mount -o remount,rw $SQFILE_DEV
+    mount -o remount,rw $SQFILE_DEV
+
     breakpoint 3 "after mounting boot device"
 
     prepare_persistence
 
-    RW_MODE=rw
-    mount_persist_device "$PERSIST_FILES"
+    breakpoint 4 "after preparing persistence"
+
+    mount_persist_device "$PERSIST_FILES" "$FROM_PERSIST"
 
     stop_mdev
     list_modules
 
-    breakpoint 4 "after mounting persistence device"
+    breakpoint 5 "after mounting persistence device"
 
     fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP" "$SQFS_MP" "$SQFILE_FULL"  "$WRAP_FILE_MP"
 
@@ -251,7 +257,7 @@ main_core() {
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
 
-    breakpoint 5 "after mounting linuxfs file"
+    breakpoint 6 "after mounting linuxfs file"
 
     check_kernel_version $SQFS_MP
 
@@ -272,7 +278,7 @@ main_core() {
     NEW_ROOT=$AUFS_MP
 
     [ "$USE_MDEV" ] && mdev -s
-    breakpoint 6 "after mounting aufs"
+    breakpoint 7 "after mounting aufs"
 
     [ "$GFX_SAVE" ] && update_gfx_menu "$GFX_SAVE_SCRIPT" "$GFX_SAVE" "$BOOT_MP/boot"
 
@@ -282,8 +288,6 @@ main_core() {
 
     mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS" \
         && msg "Enabled %s persistence" "$(cq home)"
-
-    breakpoint 7 "after mounting homefs"
 
     [ "$DO_XTRA"       ] && copy_xtra    $DEFAULT_DIR
     [ "$DO_AUTO_LOGIN" ] && auto_login   "$AUTO_LOGIN_PROG" "$AUTO_LOGIN_TERMS"
@@ -644,7 +648,7 @@ select_breakpoints() {
             echo
             echo "${m_co}Remaining $hi_co$0$m_co breakpoints:$nc_co"
             echo
-            sed -rn 's/^\s*breakpoint ([1-9a-z][0-9a-z]?)/  \1)/p' $0 | sed "s/['\"]//g"
+            sed -rn 's/^\s*breakpoint ([1-9a-z][0-9a-z]?)/  \1)/p' $0 | sed "s/['\"]//g" | sort
             echo
             echo "${m_co}Use \"a\" to set most breakpoints$nc_co"
             echo "${m_co}Use \"A\" to set all breakpoints$nc_co"
