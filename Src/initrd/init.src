@@ -2752,7 +2752,7 @@ mount_persist_device() {
         #. Could not enable required <type> persistence
         [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" 'root!'
         [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" 'home!'
-        unset WANT_ROOTFS WANT_HOMEFS
+        unset WANT_ROOTFS WANT_HOMEFS NEED_ROOTFS NEED_HOMEFS
     fi
 }
 
