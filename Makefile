@@ -110,7 +110,7 @@ install-initrd:
 	@#$(CMD_MAKE_XLAT) --verbose --force init
 	chmod a+x $(INITRD_DIR)/init
 	/live/bin/sh -n $(INITRD_DIR)/init
-	[ -d $(INITRD_IDIR) ] && cp -a $(INITRD_DIR)/* $(INITRD_IDIR)
+	[ -d "$(INITRD_IDIR)" ] && cp -a $(INITRD_DIR)/* $(INITRD_IDIR)
 
 
 install: $(TARG_FILES)
