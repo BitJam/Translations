@@ -2734,6 +2734,9 @@ mount_persist_device() {
     ALWAYS_SCAN=$FROM_PERSIST
     FROM_TYPE=${FROM_PERSIST:-usb,hd}
 
+    # FIXME: Does this always work?
+    [ "$PERSIST_ID" = "name=$FOUND_DEV" ] && PERSIST_RETRY=0
+
     find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
     if [ $? = 0 ]; then
 
