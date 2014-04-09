@@ -1,0 +1,16 @@
+.*~
+.*.swp
+.tx
+translations
+mo-files
+string-maker
+pot-files
+Output/*
+Initrd
+junk
+test
+README.mdown
+README.tx
+TODO
+Tarballs
+Makefile.local
