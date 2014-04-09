@@ -1642,8 +1642,15 @@ breakpoint() {
 
     if ! should_break_at $bp; then
 
-        [ "$DB_PLUS" ] \
-            && vmsg 9 "$green@bp$cyan[$num_co$bp$m_co]$hi_co $(get_seconds)s$m_co: $desc"
+        if [ "$TEST_ERRORS" ]; then
+            msg "normal message one"
+            echo "test error" >&2
+            msg "normal message two"
+        fi
+
+        [ "$DB_PLUS" ] || return
+        vmsg 9 "$green@bp$cyan[$num_co$bp$m_co]$hi_co $(get_seconds)s$m_co: $desc"
+        [ "$TEST_FATAL" ] && [ "$TEST_FATAL" = "$bp" ] && non_fatal "Test at bp=$bp $desc"
         return
     fi
 
