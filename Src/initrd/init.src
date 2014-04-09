@@ -238,6 +238,9 @@ main_core() {
     stop_mdev
     list_modules
 
+    # Check for ehci warning
+    dmesg | grep "Warning.*ehci" >&2
+
     breakpoint 5 "after mounting persistence device"
 
     fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP" "$SQFS_MP" "$SQFILE_FULL"  "$WRAP_FILE_MP"
