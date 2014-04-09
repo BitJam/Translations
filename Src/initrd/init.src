@@ -906,7 +906,7 @@ from_filter() {
     esac
 
     # First segregate devices by type
-    local dev cd_devs hd_devs usb_devs 
+    local dev cd_devs hd_devs usb_devs
     for dev; do
         [ -b "$dev" ] || continue
         case $(stat -c %t $dev) in
@@ -1142,14 +1142,15 @@ _find_files() {
         have_devices=true
 
         #-- now try to mount each device and find at least one of the $files ...
-        local dev fname mntpnt mounted
+        local dev fname mntpnt mounted already
         for dev in $DEVICE_LIST; do
 
             # use existing mountpoint if device is already mounted
             mntpnt="$(get_mountpoint $dev)"
             if [ "$mntpnt" ]; then
                 mounted=
-                vmsg 5 "Device %s is already mounted at %s"  "$(dq $dev)" "$(mpq $mntpnt)"
+                [ "$already" ] || vmsg 5 "Device %s is already mounted at %s"  "$(dq $dev)" "$(mpq $mntpnt)"
+                already=true
             else
                 try_mount $dev $mp_orig || continue
                 mounted=true
