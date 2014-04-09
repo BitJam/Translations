@@ -1310,7 +1310,9 @@ check_kernel_version() {
 #==============================================================================
 
 mount_linuxfs() {
-    local sqfs_mp=$1  sqfile_full=$2  wrap_mp=$3  vid_file=$1$VID_FILE
+
+    local sqfs_mp=${1:-$SQFS_MP}  sqfile_full=${2:-$SQFILE_FULL}  \
+        wrap_mp=${3:-$WRAP_FILE_MP}  vid_file=$1$VID_FILE
 
     mkdir -p $sqfs_mp
     vmsg 6 "Mount file %s at %s" "$(fq $sqfile_full)" "$(fq $sqfs_mp)"
