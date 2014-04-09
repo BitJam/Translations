@@ -6,9 +6,8 @@ OUT_DIR         := Output
 
 XLAT_DIR        := $(OUT_DIR)/usr/share/antiX/init-xlat
 
-INITRD_IDIR		:= ../LiveUSB/14-alpha-2/initrd
-
-DOMAINS_FILE    := MX_NAMES
+#INITRD_IDIR		:= ../LiveUSB/14-alpha-2/initrd
+#DOMAINS_FILE    := ANTIX_NAMES
 
 INITRD_DIR      := Initrd
 INITRD_XLAT_DIR := $(INITRD_DIR)/live/locale/xlat
