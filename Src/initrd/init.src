@@ -40,7 +40,6 @@
        DISTRO_FILE="/init.conf"
            LOG_DIR="/var/log/live"
           LOG_FILE="$LOG_DIR/bootstrap.log"
-           ERR_LOG="bootstrap.errors"
 
             MY_LOG=/init.log
            VID_DIR="/etc/live/version"
@@ -97,9 +96,9 @@ tbar="----------------------------------------------------------------------"
 main_wrapper() {
 
     local black blue green cyan red purple brown lt_gray dk_gray lt_blue
-    local lt_green lt_cyan lt_red magenta yellow white rev_red 
+    local lt_green lt_cyan lt_red magenta yellow white rev_red
     local cheat_co cmd_co dev_co err_co from_co to_co head_co
-    local hi_co mp_co m_co nc_co num_co ok_co bold_co 
+    local hi_co mp_co m_co nc_co num_co ok_co bold_co
 
     PATH=$LIVE_BIN
     HOME=/
@@ -1578,7 +1577,6 @@ fsck_boot_dev() {
     umount $sqfs_mp
     mountpoint -q $wrap_mp && umount $wrap_mp
     umount $mp
-
 
     # Now mount the boot device again so no one knows we were here
     try_mount $dev $mp || fatal "Could not remount boot device %s" "$white$dev"
