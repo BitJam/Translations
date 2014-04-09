@@ -36,6 +36,20 @@ scripts. substituting English strings for variables that are
 defined in the .xlat files.  under the /usr/share/antiX/init-xlat
 directory.
 
+Use Makefile.local for customization
+------------------------------------
+The two things I use it for are DOMAINS_FILE which controls
+which `.mo` files we make and INITRD_IDIR which controls where the
+initrd files get copied to:
+
+    INITRD_IDIR   := ../LiveUSB/14-alpha-2/initrd
+    DOMAINS_FILE  := ANTIX_NAMES
+
+If you want the .mo files installed somewhere out of this directory tree
+then you should also define PREFIX in this file.  This approach will let
+you accept updates to the `Makefile` without losing your changes in
+`Makefile.local`.
+
 
 Inputs for Making .mo Files
 ---------------------------
