@@ -1205,10 +1205,10 @@ find_device() {
     [ "$try" = 0 ] && msg "Look for %s device with %s" "$(fq $find_type)" "$type $(cq $value)"
 
     case $type in
-        name) DEVICE_LIST="$(cleanse_dev  $value)"  ; err_ret=1 ;;
-       label) DEVICE_LIST="$(label_to_dev $value)"  ; err_ret=2 ;;
-        uuid) DEVICE_LIST="$(uuid_to_dev  $value)"  ; err_ret=3 ;;
-    *) fatal 'Internal error: find_device() type=%s value=%s' "$type" "$value" ;;
+        name) DEVICE_LIST=$(cleanse_dev  $value)  ; err_ret=1 ;;
+       label) DEVICE_LIST=$(label_to_dev $value)  ; err_ret=2 ;;
+        uuid) DEVICE_LIST=$(uuid_to_dev  $value)  ; err_ret=3 ;;
+           *) fatal 'Internal error: find_device() type=%s value=%s' "$type" "$value" ;;
     esac
 
     [ "$DEVICE_LIST" ] && return 0
