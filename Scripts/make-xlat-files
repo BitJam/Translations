@@ -86,7 +86,7 @@ main() {
                 [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
                 val=$1
                 [ -n "$val" -a -z "${val##-*}" ] \
-                    && fatal "Suspicious argument after -$arg: $(pqw $val)"
+                    && fatal "Suspicious argument after -$arg: $val"
                 shift           ;;
             *=*)  val=${arg#*=} ;;
             *)  val="???"       ;;
