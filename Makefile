@@ -1,14 +1,14 @@
 SHELL           := /bin/bash
 
 PREFIX          :=
-
 OUT_DIR         := Output
 
-XLAT_DIR        := $(OUT_DIR)/usr/share/antiX/init-xlat
-
-#INITRD_IDIR		:= ../LiveUSB/14-alpha-2/initrd
+#INITRD_IDIR	 := ../LiveUSB/14-alpha-2/initrd
 #DOMAINS_FILE    := ANTIX_NAMES
 
+-include Makefile.local
+
+XLAT_DIR        := $(OUT_DIR)/usr/share/antiX/init-xlat
 INITRD_DIR      := Initrd
 INITRD_XLAT_DIR := $(INITRD_DIR)/live/locale/xlat
 
@@ -34,8 +34,6 @@ TARG_DIRS  		:= $(sort $(dir $(TARG_FILES)))
 
 .PHONY:  help help-more all force-all xlat force-xlat mo force-mo validate
 .PHONY:  initrd install-initrd install uninstall clean
-
--include Makefile.local
 
 help:
 	@echo "Common targets for \"make\" command:"
