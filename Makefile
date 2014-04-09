@@ -71,7 +71,7 @@ help:
 	@echo ""
 	@echo "     uninstall: Delete installed files and directories."
 	@echo ""
-	@echo "NOTE: Use PREFIX variable to install someplace other than /."
+	@echo "NOTE: Use PREFIX variable to install someplace other than ./"
 	@echo "NOTE: INITRD_IDIR variable controls where install-initrd installs"
 	@echo "NOTE: Put custom variables in Makefile.local"
 
