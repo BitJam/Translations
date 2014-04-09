@@ -247,7 +247,7 @@ main_core() {
 
     [ "$REMASTERABLE" ] && do_remaster "$SQFILE_MP/$SQFILE_PATH"
 
-    ORIG_SQFILE_MP=$SQFILE_MP    # This is (not currently) used by others eject cd
+    ORIG_SQFILE_MP=$SQFILE_MP
 
     # Check md5 of files in directory containing linuxfs file
     # 'fromiso' causes us to check md5sums in two places
@@ -370,7 +370,7 @@ read_cmdline_params()
           persistuuid=*|puuid=*) PERSIST_ID=uuid=$value   ;  SET_PERSIST=true    ;;
             persistdev=*|pdev=*) PERSIST_ID=name=$value   ;  SET_PERSIST=true    ;;
 
-        persistretry=*|pretry=*) valid_int PERSIST_RETRY $param                  ;;
+ persistretry=*|pretry=*|ptry=*) valid_int PERSIST_RETRY $param                  ;;
 
 #  cryptlabel=*|clabel=*|clab=*) CRYPT_LABEL=$value ;;
 #           cryptuuid=*|cuuid=*) CRYPT_UUID=$value  ;;
@@ -432,6 +432,9 @@ read_cmdline_params()
                   nousb2|noehci) NO_EHCI=true                                    ;;
 
                        noerrlog) NO_ERR_LOG=true                                 ;;
+                        errtest) TEST_ERRORS=true                                ;;
+                      errtest=*) TEST_FATAL=$value                               ;;
+
                            mdev) USE_MDEV=true                                   ;;
                          nomdev) USE_MDEV=                                       ;;
                livedir=*|ldir=*) FINAL_DIR=$value                                ;;
@@ -439,8 +442,7 @@ read_cmdline_params()
         #----- Some known codes -------------------------
 
         [sS1-6]|BOOT_IMAGE=*);;
-        video.use_bios_initial_backlight=*);;
-        video.brightness_switch_enabled=*);;
+        video.*);;
 
         # Most kernel codes from version 3.8
         acpi=*|acpi_rsdp=*|acpi_apic_instance=*|acpi_backlight=*);;
@@ -583,7 +585,7 @@ read_cmdline_params()
         watchdog|x2apic_phys|x86_mrst_timer=*|xd=*|xd_geo=*|xen_emul_unplug=*);;
         xirc2ps_cs=*);;
 
-        vga=*|nomodeset|*.modeset=*|acpi_enforce_resources=*);;
+        nomodeset|*.modeset=*);;
         nosplash|splash=*|fbcon=*);;
 
         #----------------------------------------------------------------------
