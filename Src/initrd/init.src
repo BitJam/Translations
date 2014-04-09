@@ -2806,7 +2806,8 @@ copy_persist_to_ram() {
 
     vmsg 6 "Put persistent root in RAM (from %s)"  "$ROOTFS_MP"
 
-    local persist_used=$(used_space $ROOTFS_MP)
+    local persist_used_k=$(du -sk $ROOTFS_MP | awk '{print $1}')
+    local persist_used=$((persist_used_k / 1024))
     local format="%s: $num_co%5d ${m_co}M"
 
     vmsg 7 "$format" '              Persistence uses' $persist_used
@@ -2819,7 +2820,7 @@ copy_persist_to_ram() {
         return 1
     fi
     vmsg 5 "Copy %s Megabytes to RAM ..." "${num_co}$persist_used${m_co}"
-    if ! cp_dir $ROOTFS_MP $AUFS_RAM_MP; then
+    if ! cp_dir $ROOTFS_MP $AUFS_RAM_MP 2>&1; then
          err "Copy persistent root to RAM failed!  Will erase partial copy ..."
          rm -rf $AUFS_RAM_MP/*
          return 2
