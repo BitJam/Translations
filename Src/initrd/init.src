@@ -1521,15 +1521,15 @@ should_fsck() {
     [ "$FORCE_FSCK" ] && return 0
 
     if [ $SB_STATE != 1 ]; then
-        warn '%s device %s not cleanly unmounted.  Check forced.' $name $sdev
+        warn "%s device %s not cleanly unmounted.  Check forced." "$(pqw $name)" $(pqw $sdev)
         return 0
     fi
 
     [ "$SB_MAX_MOUNT_CNT" != 65535 ] && max_count=$SB_MAX_MOUNT_CNT
 
     if [ $SB_MOUNT_CNT -ge $max_count ]; then
-        vmsg 1 '%s device %s has not been checked in %s mounts.  Check forced.' \
-            $name $sdev "$num_co$SB_MOUNT_CNT$m_co"
+        warn "%s device %s has not been checked in %s mounts.  Check forced." \
+            "$(pqw $name)" $sdev "$(nq $SB_MOUNT_CNT)"
         return 0
     fi
 
@@ -1537,8 +1537,8 @@ should_fsck() {
 
     [ $((SB_LASTCHECK + SB_CHECKINTERVAL)) -ge $(date +%s) ] || return 1
 
-    vmsg 1 '%s device %s has not been checked in %s days.  Check forced.' \
-        $name $sdev "$num_co $days$m_co"
+    warn "%s device %s has not been checked in %s days.  Check forced." \
+        $(pqw $name) $(pqw $sdev) "$(nqw $days)"
     return 1
     return 0
 }
@@ -1547,9 +1547,9 @@ do_fsck() {
     local err ret output dev=$1  sdev=$(pq ${1##*/})
 
     vmsg 2 "fsck$white $dev"
-    output=$(e2fsck -n -C 0 $dev 2>&1)
+    output=$(e2fsck -n $dev 2>&1)
     ret=$?
-    msg_nc "$output"
+    echo "$output" | tee -a $MY_LOG
     tune2fs -C 1 $dev
 
     case $ret in
