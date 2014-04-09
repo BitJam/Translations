@@ -66,6 +66,12 @@
           USE_MDEV=
            DO_LOAD=true
 
+MKFS_FREE_MARGIN=20
+  rootfs_SIZE_PARAM="min_size=64 mid_size=400 max_size=2000 factor=50"
+  homefs_SIZE_PARAM="min_size=64 mid_size=400 max_size=2000 factor=25"
+
+      MAX_MKFS_SIZE=4000
+         MKFS_SIZES="65 100 150 200 250 375 500 750 1000 1500 2000 2500 3000 4000"
 # Log msg statements to $LOG_FILE, First store them in $LOG variable.
             LOG=""
 
@@ -1863,6 +1869,73 @@ _non_fatal() { _error "Non-Fatal Error" "c" "continue"  "$@" ;}
 fatal()      { _fatal     "$(printf "$@")"                   ;}
 non_fatal()  { _non_fatal "$(printf "$@")"                   ;}
 
+YES_no() {
+    local ans title=$(printf "$m_co$@")
+    local yes=$(cq "yes")  no=$(cq "no")  y_lett=$(bq y) n_lett=$(bq n)
+
+    local err_msg=$(printf "You must answer %s or %s. Please try again" $(pqe y) $(pqe n))
+    echo
+    while true; do
+        echo -e "$title?"
+        printf "${m_co}$y_lett=$yes. $n_lett=$no. %s $y_lett=$yes\n" "The default is"
+        echo -n "$green>$nc_co "
+
+        read ans
+        case x$ans in
+            x[Yy]*) return 0;;
+            x[Nn]*) return 1;;
+        esac
+
+        [ -z "$ans" ] && return 0
+        printf "$err_co%s$nc_co\n" "$err_msg"
+    done
+}
+
+my_select() {
+    local title=$1  var=$2  width=${3:-0}  default=$4
+    shift 4
+
+    local data display lab cnt=0
+    for lab; do
+        cnt=$((cnt+1))
+        data="${data}$cnt:$lab\n"
+        [ $cnt = "$default" ] && lab=$(printf "%${width}s (%s)" "$lab" "$(cq "default")")
+        display="${display}$(printf "%2d) %${width}s" $cnt "$lab")\n"
+    done
+
+    local def_prompt=$(printf "Press <%s> for the default selection" "$(cq "enter")")
+
+    local val input err_msg
+    while [ -z "$val" ]; do
+
+        printf "$bold_co%s$nc_co\n" "$title"
+        printf "$display" | sed -r -e "s/(^|\t)( ?[0-9]+)(\))/\t$green\2$white\3$cyan/g" -e "s/$/$nc_co/"
+        [ "$err_msg" ] && printf "$err_co%s$nc_co\n" "$err_msg"
+        [ "$default" ] && printf "$m_co%s$nc_co\n" "$def_prompt"
+        echo -n "$green>$nc_co "
+
+        read input
+        err_msg=
+        [ -z "$input" -a -n "$default" ] && input=$default
+
+        if ! echo "$input" | grep -q "^[0-9]\+$"; then
+            err_msg="You must enter a number"
+            [ "$default" ] && err_msg="You must enter a number or press <enter>"
+            continue
+        fi
+
+        val=$(echo -e "$data" | sed -n "s/^$input://p")
+
+        if [ -z "$val" ]; then
+            err_msg=$(printf "The number <%s> is out of range" "$(pqe $input)")
+            continue
+        fi
+
+        eval $var=\$val
+        break
+    done
+}
+
 sync_fs() {
     sync
 }
@@ -2419,45 +2492,204 @@ prepare_persistence() {
 
         # You can't always get what you want ...
         case $param in
-            home|home!)
+            home|home!|h|h!)
                 persist_files="$PERSIST_PATH/homefs $persist_files"
                 persist_files="$PERSIST_PATH/homefs.new $persist_files"
                 WANT_HOMEFS=true ;;
 
-            root|root!)
-                persist_files="$PERSIST_PATH/rootfs $persist_files"
+            root|root!|r|r!)
+                persist_files="$PERSIST_PATH/$rootfs_file $persist_files"
                 WANT_ROOTFS=true ;;
+
+            auto|a)
+                AUTO_MAKE_FS=true;;
 
             usb|hd)
                 FROM_PERSIST="$FROM_PERSIST,$param" ;;
 
-            s|static) ;;
+            static|s) ;;
 
             *)
                 warn
                 warn "Invalid %s values(s) %s"  $(cqw persist) "$(cqw $param)"
-                warn "Valid values: %s" "$(cqw home home! root root! s static usb hd)" ;;
+                warn "Valid values: %s" "$(cqw auto home home! root root! static usb hd a h h! r r! s)" ;;
         esac
 
         # And if you try sometime ...
         case $param in
-            home!)
+            home!|h!)
                 NEED_HOMEFS=true;;
-            root!)
+            root!|r!)
                 NEED_ROOTFS=true;;
         esac
     done
     PERSIST_FILES=$persist_files
+
+}
+
+
+default_makefs_size() {
+    local avail=$1  size=$3  params
+    eval params=\$$2
+    eval local $params
+    [ "$avail" -lt $mid_size ] && factor=1
+    [ "$size" ] || size=$((mid_size + factor * ( avail - mid_size ) / 100))
+    [ $size -gt $max_size ] && size=$max_size
+    [ $size -gt $avail    ] && size=$avail
+    [ $size -lt $min_size ] && return 1
+    echo $size
+    return 0
+}
+
+persist_makefs() {
+    local type=$1  dir=$2  file=$3  needed=$4  orig_def_size=$5  full_file=$2/$3
+
+    [ -e $full_file ] && return
+
+    if [ -z "$needed" -a -n "$AUTO_MAKE_FS" ]; then
+        vmsg 5 "Not auto-creating %s file because it was not required (no !)" $(fq $file)
+        return
+    fi
+
+    local free=$(free_space $dir)
+    local avail=$((free - MKFS_FREE_MARGIN))
+
+    vmsg 6 '     Free space: %s Meg' $(nq $free)
+    vmsg 6 'Available space: %s Meg' $(nq $avail)
+
+    [ "$orig_def_size" ] && [ $orig_def_size -gt $avail ] \
+        && warn "Not enough room on Live device to create %s file of size %s Meg" \
+            $(fq $file) $(nq $orig_def_size)
+
+    local default_size=$(default_makefs_size $avail ${file}_SIZE_PARAM $orig_def_size)
+
+    vmsg 6 'Default size: %s' $(nq $default_size)
+
+    : ${default_size:=-1}
+
+    # Create a menu of sizes.  Include the default size
+    local size sizes default_cnt cnt=1
+    for size in $MKFS_SIZES; do
+        if [ -z "$default_cnt" -a $default_size -gt 0 -a $size -ge $default_size ]; then
+            sizes="$sizes $default_size"
+            default_cnt=$cnt
+        fi
+        cnt=$((cnt + 1))
+        [ $size -gt $avail ] && break
+        [ $size -eq $default_size ] && continue
+        sizes="$sizes $size"
+    done
+
+    # Include default size at end of menu if needed
+    if [ -z "$default_cnt" -a $default_size -gt 0 ]; then
+        sizes="$sizes $default_size"
+        default_cnt=$cnt
+    fi
+
+    [ "$sizes" ] || return
+
+   # Include all available in menu if it is appropriate
+    local max=$(echo "$sizes" | sed 's/.* //')
+    [ $max -lt $avail -a $avail -lt $MAX_MKFS_SIZE ] && sizes="$sizes $avail"
+
+    local fs_type fs_size auto_mode create_mode quit=$(printf "quit")
+    [ "$needed" ] && quit=
+
+    vmsg 1 "%s persistence was requested but no %s file was found" $(cq $type) $(fq $file)
+
+    heading "create %s persistence file" "$(fq $file)"
+    vmsg 1 "Default size: %s  Default type: %s" $(nq $default_size) $(pq ext3)
+
+    if [ "$AUTO_MAKE_FS" ]; then
+        auto_mode=true
+    else
+        local title=$(printf "Create %s file, manually or automatically" $(fq $file))
+        my_select "$title" create_mode 0 1 "create automatically" "create custom" $quit
+        case $create_mode in
+            "$quit")
+                return ;;
+            "create automatically")
+                auto_mode=true;;
+        esac
+    fi
+
+    if [ "$auto_mode" ]; then
+       fs_type=ext3
+        fs_size=$default_size
+
+    else
+        local title=$(printf "Please select size of %s file" $(pqw $file))
+
+        echo
+        vmsg 1 "There is %s Meg available on the device" $(nq $avail)
+        my_select "$title" fs_size 4 "$default_cnt" $sizes $quit
+        [ "$fs_size" = "quit" ] && return
+
+        vmsg 1 "Filesystem size %s Meg" $(nq $fs_size)
+
+        [ "$fs_size" = "quit" ] && return
+        title=$(printf "Please select file system for %s file" $(pqw $file))
+
+        echo
+        my_select "$title" fs_type 0 2 ext2 ext3 ext4 $quit
+        [ "$fs_type" = "quit" ] && return
+
+    fi
+    vmsg 1 "Create %s file of type %s and size %s Meg" "$(fq $file)" "$(pq $fs_type)" "$(nq $fs_size)"
+
+    # Now do the actual work
+    mount_linuxfs
+
+    mount -o remount,rw $SQFILE_DEV 2>/dev/null
+
+    breakpoint t "Before makefs"
+
+    if dd if=/dev/zero of=$full_file bs=1M count=0 seek=$fs_size &>/dev/null; then
+        if ! mkfs.$fs_type -q -F $full_file; then
+            err "The % command failed.  Deleting %s file" $(cq mkfs.$fs_type) $(pqe $file)
+            rm -f $full_file
+        fi
+    else
+        err "The % command failed.  Deleting %s file" $(cqe dd) $(pqe $file)
+        rm -f $full_file
+    fi
+
+    test -e $full_file && msg "Created persistence file %s" $(fq $file)
+
+    set_path $LIVE_BIN
+    umount $SQFS_MP
+
+    breakpoint t "After makefs umount"
 }
 
 mount_persist_device() {
-    local persist_files=$1
+    local persist_files=$1  from_persist=$2
 
     [ "$persist_files" ] || return
 
     heading "Mount persistence device (if needed)"
-    
-    [ "$FROM_PERSIST" ] || : ${PERSIST_ID:=name=$FOUND_DEV}
+
+    [ "$from_persist" ] || : ${PERSIST_ID:=name=$FOUND_DEV}
+
+    # Create persistence files if they don't already exist
+    if [ "$PERSIST_ID" = "name=$FOUND_DEV" ]; then
+        if [ "$NEED_ROOTFS" ]; then
+
+            # Default size for rootfs.new is size of rootfs
+            local default_size rootfs_file=rootfs
+            if [ "$WILL_REMASTER" ]; then
+                default_size=$(stat -c %s $SQFILE_DIR/rootfs 2>/dev/null)
+                msg 'default size: %s' "$(nq $default_size)"
+                [ "$default_size" ] && default_size=$((default_size/1024/1024))
+                rootfs_file=rootfs.new
+            fi
+
+            persist_makefs root $SQFILE_DIR $rootfs_file "$NEED_ROOTFS" $default_size
+
+        fi
+
+        [ "$NEED_HOMEFS" ] && persist_makefs home $SQFILE_DIR homefs "$NEED_HOMEFS"
+    fi
 
     # # Default is to use device that holds the linuxfs or iso file
     # if [ -z "$PERSIST_ID" ]; then
