@@ -2280,6 +2280,17 @@ find_crypt_device() {
     return 1
 }
 
+will_remaster() {
+    [ -n "$NO_REMASTER" -o "$ROLLBACK" ] && return 1
+
+    local sqfile_path=${1:-$SQFILE_MP/$SQFILE_PATH}
+    local sqfile=$sqfile_path/$SQFILE_NAME
+    local old_file=$sqfile.old new_file=$sqfile.new bad_file=$sqfile.bad
+    [ -e $old_file -o -e $bad_file ] && return 1
+    [ -e $new_file ]
+    return $?
+}
+
 #------------------------------------------------------------------------------
 # Function: do_remaster <dir>
 #
@@ -2496,7 +2507,12 @@ prepare_persistence() {
 
     PERSIST_PATH=${PERSIST_PATH:-$DEFAULT_PERSIST_PATH}
 
-    [ "$PERSIST" ] && ! echo $PERSIST | egrep -q 'home|root' && PERSIST="$PERSIST,home,root"
+    [ "$PERSIST" ] && ! echo $PERSIST | egrep -q 'home|root|r(,|!|$)|h(,|!|$)' && PERSIST="$PERSIST,home,root"
+
+    will_remaster && WILL_REMASTER=true
+
+    local rootfs_file=rootfs
+    [ "$WILL_REMASTER" ] && rootfs_file=rootfs.new
 
     #----- Parse persist= ---------------------------------------------------------
 
