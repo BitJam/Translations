@@ -1975,8 +1975,8 @@ EOT
 
 cleanse_dev() {
     case $1 in
-        /dev/*)  [ -b "$1" ]      && echo "$1";;
-         dev/*)  [ -b "/$1" ]     && echo "/$1";;
+        /dev/*)  [ -b "$1"      ] && echo "$1";;
+         dev/*)  [ -b "/$1"     ] && echo "/$1";;
             /*)  [ -b "/dev$1"  ] && echo "/dev$1";;
              *)  [ -b "/dev/$1" ] && echo "/dev/$1";;
     esac
@@ -2006,7 +2006,7 @@ EOT
 }
 
 general_device_error() {
-    msg "gde($*)"
+    #msg "gde($*)"
     case $2 in
         uuid|label) label_error  "$@" ;;
               name) device_error "$@" ;;
