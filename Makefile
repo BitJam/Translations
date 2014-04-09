@@ -36,6 +36,8 @@ TARG_DIRS  		:= $(sort $(dir $(TARG_FILES)))
 .PHONY:  help help-more all force-all xlat force-xlat mo force-mo validate
 .PHONY:  initrd install-initrd install uninstall clean
 
+-include Makefile.local
+
 help:
 	@echo "Common targets for \"make\" command:"
 	@echo ""
@@ -70,8 +72,9 @@ help:
 	@echo ""
 	@echo "     uninstall: Delete installed files and directories."
 	@echo ""
-	@echo "NOTE: use PREFIX variable to install someplace other than /."
-	@echo "NOTE: use INITRD_IDIR variable controls where install-initrd installs"
+	@echo "NOTE: Use PREFIX variable to install someplace other than /."
+	@echo "NOTE: INITRD_IDIR variable controls where install-initrd installs"
+	@echo "NOTE: Put custom variables in Makefile.local"
 
 all: mo xlat
 
