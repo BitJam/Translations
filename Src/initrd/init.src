@@ -2101,10 +2101,10 @@ check_vid() {
             vmsg 6 'Matching %s found in %s' "$VID_NAME" "$(fq $vid_file)"
             return 0
         else
-            #local err=$(printf "%s mismatch" "$VID_NAME")
-            #VID_ERR=$err
+            local err=$(printf "%s mismatch between %s and %s" "$VID_NAME" linuxfs rootfs)
+            VID_ERR=$err
             #. <type> mismatch
-            _non_fatal "%s mismatch" $VID_NAME "linuxfs: $sqfs_vid" " rootfs: $vid"
+            _non_fatal "$err" "linuxfs: $sqfs_vid" " rootfs: $vid"
             return 1
         fi
 
