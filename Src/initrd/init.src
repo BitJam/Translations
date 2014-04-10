@@ -140,6 +140,8 @@ main_wrapper() {
 
     set_colors "$NO_COLOR" "$LOW_COLOR"
 
+    read_xlat init $LANG
+
     echo "$PRINTK" > /proc/sys/kernel/printk
 
     if [ "$NO_ERR_LOG" ]; then
@@ -180,8 +182,6 @@ main_wrapper() {
 main_core() {
     [ "$NO_CLEAR" ] || printf "\e[1J"       # Clear and reset screen
     vmsg 6 "=== $0 bootstrap =================================================="
-
-    read_xlat init $LANG
 
     vmsg 6 '%s started at %s seconds' $0 $(nq $(get_seconds $time_0))
 
@@ -1878,7 +1878,7 @@ safe_shutdown() {
     local cmd=$1  ask=$2
 
     set_path $LIVE_BIN
-    exec < /dev/console > /dev/console
+    #exec < /dev/console > /dev/console
 
     final_umount && vmsg 1 "Unmount successful"
     breakpoint u "final umount"
