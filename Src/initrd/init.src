@@ -437,6 +437,7 @@ read_cmdline_params()
                        noerrlog) NO_ERR_LOG=true                                 ;;
                         errtest) TEST_ERRORS=true                                ;;
                       errtest=*) TEST_FATAL=$value                               ;;
+                        noerr=*) NO_ERROR=$value                                 ;;
 
                            mdev) USE_MDEV=true                                   ;;
                          nomdev) USE_MDEV=                                       ;;
@@ -1774,8 +1775,14 @@ log_cmd()
 }
 
 _error() {
-    local type=$1  cmsg1=$2  cmsg2=$3
+    local type=$1  cmsg1=$2  cmsg2=$3  msg=$4
     shift 3
+
+    local match="$(echo $NO_ERROR | sed 's/_/ /g')"
+    if [ "$NO_ERROR" -a -z ${msg##$match*} ]; then
+        msg "Skip Error: %s" "$(bq $msg)"
+        return
+    fi
 
     if [ "$type" ]; then
         warn
