@@ -2450,7 +2450,7 @@ _copy_to_ram() {
     done
     [ -e $SQFILE_FULL.md5 ] && cp $SQFILE_FULL.md5 $dest
 
-    if ! cp_file $orig $SQFILE_NAME $dest; then
+    if ! cp_file $orig $SQFILE_NAME $dest 2>&1; then
         err "Copy failed.  Cannot do %s" $err_toram
         return 3
     fi
