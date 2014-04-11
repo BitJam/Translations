@@ -239,7 +239,7 @@ main_core() {
     list_modules
 
     # Check for ehci warning
-    dmesg | grep "Warning.*ehci" >&2
+    dmesg | grep 'Warning.*ehci' >&2
 
     breakpoint 5 "after mounting persistence device"
 
