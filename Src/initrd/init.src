@@ -1304,7 +1304,7 @@ check_kernel_version() {
 
     [ -d $mp$mod_dir ] && return
 
-    _non_fatal "Possible kernel version mismatch" \
+    _non_fatal "Kernel version mismatch" \
         "$(printf "Kernel version %s" $(pq $kversion))" \
         "$(printf "The module directory %s is missing" $(pq $mp$mod_dir))"
 }
