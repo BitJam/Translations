@@ -141,6 +141,7 @@ main_wrapper() {
     set_colors "$NO_COLOR" "$LOW_COLOR"
 
     read_xlat init $LANG
+    clean_xlat
 
     echo "$PRINTK" > /proc/sys/kernel/printk
 
@@ -672,6 +673,11 @@ mem_info() {
         echo $((amt / 1024))
         return
     done </proc/meminfo
+}
+
+clean_xlat() {
+    find $LOCALE_DIR/xlat -name init.xlat -delete
+    rm -rf $LOCALE_DIR/fonts
 }
 
 read_xlat() {
@@ -3271,11 +3277,15 @@ prepare_switch_root() {
     done
 
     # We don't need these now so this saves some RAM
-    # FIXME is this still needed with the pivot_root?
-    (cd $live_dir/lib && rm -rf modules libdl* libfuse* libntfs* libpthread*)
+    # FIXME: can we remove the entire live/lib?
+    #(cd $live_dir/lib && rm -rf modules libdl* libfuse* libntfs* libpthread*)
+
+    find $live_dir/lib -not -name "libc*" -delete 2>/dev/null
+    (cd $live_dir/bin && rm -rf fbcondecor_helper ntfs-3g gfxsave.sh)
+    rm -rf /$live_dir/etc/*
 
     local dir old new
-    for dir in bin config etc lib locale; do
+    for dir in bin config lib locale; do
         old=$live_dir/$dir
         new=$new_live/$dir
         mkdir -p $new
