@@ -15,8 +15,8 @@
 #              _FULL   absolute mountpoint and path and filename
 #              _DIR    varies
 
-           VERSION="6.00.06"
-      VERSION_DATE="Sun Mar  2 01:39:51 MST 2014"
+           VERSION="6.00.08"
+      VERSION_DATE="Sat Apr 12 08:48:45 MDT 2014"
          DEVELOPER="BitJam"
          DEV_EMAIL="http://antix.freeforums.org"
 
@@ -3126,7 +3126,7 @@ Bootstrap_Out
     [ "$REMASTERABLE" ]                         && touch $dir/remasterable
     [ -n "$PERSIST_ROOT" -a -z "$STATIC_ROOT" ] && touch $dir/save-persist
 
-    echo "$SQFILE_DEV" > /live/bin/boot-device
+    echo "$SQFILE_DEV" > $dir/boot-device
 }
 
 old_write_output_files() {
