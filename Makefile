@@ -33,8 +33,10 @@ SRC_FILES       := $(shell find $(OUT_DIR) $(FIND_OPTS))
 TARG_FILES 		:= $(patsubst $(FROM_DIR)%,$(PREFIX)%, $(SRC_FILES))
 TARG_DIRS  		:= $(sort $(dir $(TARG_FILES)))
 
+LIVE_INIT_SRC   := Src/initrd/init.src
+
 .PHONY:  help help-more all force-all xlat force-xlat mo force-mo validate
-.PHONY:  initrd install-initrd install uninstall clean
+.PHONY:  initrd install-initrd install uninstall clean bump
 
 help:
 	@echo "Common targets for \"make\" command:"
@@ -107,6 +109,16 @@ force-initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose --force init
+
+bump:
+	sed -i -r "s/^(\s*VERSION_DATE=).*/\1\"$$(date)\"/" $(LIVE_INIT_SRC)
+
+	minor=$$(sed -rn "s/^\s*VERSION=\".*\.([0-9]+)\"/\1/p" $(LIVE_INIT_SRC) );\
+		  next=$$(printf "%0$${#minor}d" $$((minor + 1))); \
+		  sed -r -n "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/p" $(LIVE_INIT_SRC); \
+		  sed -r -i "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/" $(LIVE_INIT_SRC)
+
+
 
 validate:
 	$(CMD_VALIDATE) $(XLAT_DIR) $(INITRD_XLAT_DIR)
