@@ -175,7 +175,8 @@ main() {
         
         vvsay "directory: $tdir"
         #continue
-        
+       
+        local en_file=$xlat_dir/en/$domain.xlat
         local count=0 langs= lang po_file cmd mo_file
         for po_file in $tdir/*.po; do
             [ -f $po_file ] || continue
@@ -206,9 +207,9 @@ main() {
             if not_skip_or_older xlat $xlat_file $str_maker $mo_file; then
                 vsay "  > $xlat_file"
                 pretend mkdir -p $(dirname $xlat_file)
-                [ -z "$PRETEND" ] && LANGUAGE=$lang $str_maker > $xlat_file
+                [ -z "$PRETEND" ] && LANGUAGE=$lang $str_maker | sort -u  | comm -23 - $en_file > $xlat_file
                 [ -n "$PRETEND" -a -n "$VERY_VERBOSE" ] \
-                    && echo "LANGUAGE=$lang $str_maker > $xlat_file"
+                    && echo "LANGUAGE=$lang $str_maker | sort -u | comm -3 - $en_file > $xlat_file"
                 xlat_count=$((xlat_count + 1))
             fi
 
@@ -269,7 +270,11 @@ prep_xlat() {
     if not_skip_or_older en $en_file $src_file; then
         vsay "> $en_file"
         pretend mkdir -p $(dirname $en_file)
-        pretend $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file -o $en_file
+        if [ -z "$PRETEND" ]; then
+            $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file | sort -u > $en_file
+        else
+            pretend $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file
+        fi
         xlat_count=$((xlat_count + 1))
     fi
 
