@@ -56,7 +56,6 @@
        RETRY_DELAY=50               # in hundredths of a second
            VERBOSE=5
 
-       DO_AUTOLOAD=true
         DO_HOTPLUG=true
         LOAD_FIRST="usb_common usbcore ehci-hcd"
 
@@ -64,7 +63,7 @@
       LINUXFS_NAME=linuxfs
 
           USE_MDEV=
-           DO_LOAD=true
+           DO_LOAD=
 
 MKFS_FREE_MARGIN=20
   rootfs_SIZE_PARAM="min_size=64 mid_size=400 max_size=2000 factor=50"
@@ -112,6 +111,7 @@ main_wrapper() {
     PWD=/
 
     set_live_dirs $LIVE_DIR
+    mkdir -p $OUTPUT_DIR
 
     # Don't allow interrupts to ruin our day
     #       HUP INT QUIT SEGV TERM
@@ -196,7 +196,8 @@ main_core() {
 
     breakpoint 1 "before loading modules"
 
-    start_mdev $DO_HOTPLUG
+    start_hotplug "$DO_HOTPLUG" "$TRACE_LOAD"
+    load_kernel_modules "$DO_LOAD" "$MODULE_LIST"
 
     do_welcome "$DISTRO" "$DISTRO_VERSION" "$DISTRO_CODENAME" "$VERSION" "$VERSION_DATE"
 
@@ -210,8 +211,6 @@ main_core() {
     [ "$SQFILE_EXT" ] && SQFILE_NAME="$SQFILE_NAME.$SQFILE_EXT"
     SQFILE_FILE="$BOOT_DIR/$SQFILE_NAME"
     SQFILE_FILE=${SQFILE_FILE#/}
-
-    load_kernel_modules "$DO_AUTOLOAD" "$DO_LOAD" "$MODULE_LIST"
 
     # Wait and only do this in the find_files() loop so the usb report
     # will always work
@@ -236,7 +235,7 @@ main_core() {
 
     mount_persist_device "$PERSIST_FILES" "$FROM_PERSIST"
 
-    stop_mdev
+    stop_hotplug
     list_modules
 
     # Check for ehci warning
@@ -424,12 +423,10 @@ read_cmdline_params()
                          load=*) MODULE_LIST=$MODULE_LIST,$value                 ;;
                            load) DO_LOAD=true                                    ;;
                          noload) DO_LOAD=                                        ;;
-             noautoload|noaload) DO_AUTOLOAD=                                    ;;
-                 autoload|aload) DO_AUTOLOAD=true                                ;;
 
                       nohotplug) DO_HOTPLUG=                                     ;;
                       traceload) TRACE_LOAD=true                                 ;;
-                 AUTOLOAD|ALOAD) FULL_AUTOLOAD=true; DO_AUTOLOAD=true            ;;
+                 autoload|aload) FULL_AUTOLOAD=true                              ;;
 
                          init=*) INIT_PROG=$value                                ;;
 
@@ -613,12 +610,12 @@ valid_int() {
     INT_ERRORS="$INT_ERRORS $param"
 }
 
-start_mdev() {
-    local do_hotplug=$1
+start_hotplug() {
+    local do_hotplug=$1  trace_load=$2
 
     # Set up file for recording sequence of kernel events sent to mdev
     echo > /dev/mdev.seq
-    if [ "$TRACE_LOAD" ]; then
+    if [ "$trace_load" ]; then
         echo $LIVE_BIN/mdev-trace > /proc/sys/kernel/hotplug
     elif [ -n "$do_hotplug" ]; then
         echo $LIVE_BIN/mdev-hotplug > /proc/sys/kernel/hotplug
@@ -627,7 +624,7 @@ start_mdev() {
     [ "$USE_MDEV" ] && mdev -s
 }
 
-stop_mdev() { echo > /proc/sys/kernel/hotplug; }
+stop_hotplug() { echo > /proc/sys/kernel/hotplug; }
 
 list_modules() {
     local mod list cnt=0
@@ -787,7 +784,8 @@ disable_hcd() {
 }
 
 load_kernel_modules() {
-    local module  autoload=$1  do_load=$2  list=$3  file=$CUSTOM_DIR/$DISTRO/modules.load
+    local module  do_load=$1  list=$2  file=$CUSTOM_DIR/$DISTRO/modules.load
+
 
     mkdir -p $MOD_DIR
     # This one must be loaded before the others
@@ -803,7 +801,7 @@ load_kernel_modules() {
         done
     fi
 
-    [ "$autoload" ] && autoload_modules 6
+    autoload_modules 6
 
     # . Could not load module <module-name>
     for module in $(echo $list | sed 's/,/ /g'); do
@@ -831,6 +829,8 @@ autoload_modules() {
         $LIVE_BIN/modprobe -q $alias &>/dev/null
         [ "$TRACE_LOAD" ] && echo $alias > /live/bin/auto-load.trace
     done
+
+    [ "$USE_MDEV" ] && mdev -s
 }
 
 load_module() {
