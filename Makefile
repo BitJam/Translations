@@ -113,7 +113,7 @@ force-initrd:
 bump:
 	sed -i -r "s/^(\s*VERSION_DATE=).*/\1\"$$(date)\"/" $(LIVE_INIT_SRC)
 
-	minor=$$(sed -rn "s/^\s*VERSION=\".*\.([0-9]+)\"/\1/p" $(LIVE_INIT_SRC) );\
+	minor=$$(sed -rn "s/^\s*VERSION=\".*\.([0-9]+)\"/\1/p" $(LIVE_INIT_SRC) | sed 's/.*\.//'); \
 		  next=$$(printf "%0$${#minor}d" $$((minor + 1))); \
 		  sed -r -n "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/p" $(LIVE_INIT_SRC); \
 		  sed -r -i "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/" $(LIVE_INIT_SRC)
