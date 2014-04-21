@@ -66,8 +66,8 @@
            DO_LOAD=
 
 MKFS_FREE_MARGIN=20
-  rootfs_SIZE_PARAM="min_size=64 mid_size=400 max_size=2000 factor=50"
-  homefs_SIZE_PARAM="min_size=64 mid_size=400 max_size=2000 factor=25"
+  rootfs_SIZE_PARAM="min_size=64 mid_size=400 max_size=1000 factor=50"
+  homefs_SIZE_PARAM="min_size=64 mid_size=400 max_size=1000 factor=25"
 
       MAX_MKFS_SIZE=4000
          MKFS_SIZES="65 100 150 200 250 375 500 750 1000 1500 2000 2500 3000 4000"
