@@ -123,6 +123,9 @@ main_wrapper() {
     mount -t proc   proc  /proc
     mount -t sysfs  sys   /sys
 
+    [ -d /lib/splash/proc ] && mount -t proc proc /lib/spash/proc
+    [ -d /lib/splash/sys ]  && mount -t sys sys   /lib/spash/sys
+
     local time_0=$(cut -d" " -f22 /proc/$$/stat)
 
     make_nodes /dev
