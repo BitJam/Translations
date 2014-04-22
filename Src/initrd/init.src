@@ -699,6 +699,9 @@ read_xlat() {
 }
 
 do_welcome() {
+
+    [ "$NO_CLEAR" ] || clear   # Clear and reset screen
+
     local distro=$1  d_version=$2  d_codename=$3  version=$4  v_date=$5
     local welcome_name
 
