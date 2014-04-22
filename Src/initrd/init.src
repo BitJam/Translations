@@ -3288,6 +3288,10 @@ prepare_switch_root() {
     (cd $live_dir/bin && rm -rf fbcondecor_helper ntfs-3g gfxsave.sh)
     rm -rf /$live_dir/etc/*
 
+    # Work around a bug in fbcondecor_helper
+    local fbsys=$live_dir/lib/splash/sys
+    mountpoint &>/dev/null $fbsys && umount $fbsys
+
     local dir old new
     for dir in bin config lib locale; do
         old=$live_dir/$dir
