@@ -126,6 +126,8 @@ main_wrapper() {
     local time_0=$(cut -d" " -f22 /proc/$$/stat)
 
     make_nodes /dev
+    #exec < /dev/tty1 > /dev/tty1
+    chvt 1
 
     custom_code $DISTRO_FILE
     custom_code 0 'before reading boot codes'
@@ -337,6 +339,7 @@ make_nodes() {
     [ -e $dir/console ] || mknod $dir/console c 5 1
     [ -e $dir/null    ] || mknod $dir/null    c 1 3
     [ -e $dir/tty0    ] || mknod $dir/tty0    c 4 0
+    [ -e $dir/tty1    ] || mknod $dir/tty1    c 4 0
 }
 
 #------------------------------------------------------------------------------
@@ -3317,5 +3320,6 @@ prepare_switch_root() {
 
 #==============================================================================
 # What was last shall be first
+
 main_wrapper "$@"
 #==============================================================================
