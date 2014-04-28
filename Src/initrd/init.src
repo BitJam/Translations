@@ -3275,7 +3275,7 @@ prepare_switch_root() {
         mountpoint -q $mp   || continue
         new=$new_live/$(basename $mp)
         mkdir -p $new
-        mount --move $mp $new
+        log_cmd mount --move $mp $new
 
         # ignore error on read-only filesystems
         # I'm not sure why the chmod is needed on the others but it is.
