@@ -145,6 +145,8 @@ main_wrapper() {
 
     echo "$PRINTK" > /proc/sys/kernel/printk
 
+    breakpoint 0 "before main_core"
+
     if [ "$NO_ERR_LOG" ]; then
         main_core
     else
