@@ -148,7 +148,7 @@ main_wrapper() {
     if [ "$NO_ERR_LOG" ]; then
         main_core
     else
-        main_core 7>&1 1>&2 2>&7  | while read line; do echo "$line" \
+        main_core 17>&1 1>&2 2>&17 | while read line; do echo "$line" \
             | sed -e "s/^/${yellow}Error: $red/" -e "s/$/$nc_co/" | tee -a $MY_LOG; done
     fi
 
@@ -1431,7 +1431,7 @@ try_mount() {
     case $TYPE in
             vfat) mount -t vfat -o $rw,umask=000,shortname=winnt  "$dev" "$mp" 2>/dev/null ;;
          iso9660) mount -t iso9660 -o ro                          "$dev" "$mp" 2>/dev/null ;;
-            ntfs) ntfs-3g -o umask=000,force,"$rw"                "$dev" "$mp" 2>/dev/null || \
+            ntfs) ntfs-3g -o umask=000,force,"$rw"                "$dev" "$mp" 2>/dev/null 17>/dev/null || \
                   mount -t ntfs -o umask=000,ro                   "$dev" "$mp" 2>/dev/null ;;
                *) mount -t $TYPE -o "$rw"                         "$dev" "$mp" 2>/dev/null ;;
     esac
