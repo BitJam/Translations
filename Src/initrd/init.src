@@ -2461,7 +2461,7 @@ _copy_to_ram() {
     mkdir -p "$dest"
 
     vmsg 3 "Will copy files from %s to %s. Please be patient ..." \
-        "$(dq $orig)" "$dq $dest)"
+        "$(dq $orig)" "$(dq $dest)"
 
     for extra in $EXTRA_FILES; do
         local full=$(readlink -f $SQFILE_DIR/$extra)
