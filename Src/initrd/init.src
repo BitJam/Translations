@@ -143,6 +143,9 @@ main_wrapper() {
     read_xlat init $LANG
     clean_xlat
 
+    # disable console screen blanking
+    printf "\e[9;0]\e[14;0]"
+
     echo "$PRINTK" > /proc/sys/kernel/printk
 
     breakpoint 0 "before main_core"
@@ -162,6 +165,9 @@ main_wrapper() {
     NEW_ROOT=$AUFS_MP
 
     breakpoint 9 "right before starting init"
+
+    # re-enable console screen blanking at 15 minutes
+    printf "\e[9;15]\e[14;15]"
 
     if find_init_prog INIT_PROG $NEW_ROOT; then
 
