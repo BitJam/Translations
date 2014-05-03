@@ -636,7 +636,7 @@ stop_hotplug() { echo > /proc/sys/kernel/hotplug; }
 
 list_modules() {
     local mod list cnt=0
-    list=$( echo $(lsmod | tail -n +2 | cut -d" " -f1))
+    list=$( echo $(lsmod | grep "^[a-z]" | cut -d" " -f1) | sort)
     cnt=$(echo $list | wc -w)
 
     #. loaded <count> modules(s)
