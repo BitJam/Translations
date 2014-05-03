@@ -736,13 +736,14 @@ do_welcome() {
     # vmsg 6 "$mem_format"  "              Free Memory"  $FREE_MEM
     vmsg 6 "$mem_format"  "              Used Memory"  $used_mem
 
-    local cpu_format="%s: %s"
-    vmsg 6 "$cpu_format"  "             Linux kernel" "${white}$(uname -r)"
-    # vmsg 6 "$cpu_format"  "             Architecture" "${white}$(uname -m)"
+    local cpu_format="%s:$white %s"
+    vmsg 6 "$cpu_format"  "             Linux kernel" "$(uname -r)"
 
-    # vmsg 6  "$cpu_format" "                      CPU" "$white$(cpu_param 'model name' unknown)"
+    # vmsg 6 "$cpu_format"  "             Architecture" "$(uname -m)"
+
+    # vmsg 6  "$cpu_format" "                      CPU" "$(cpu_param 'model name' unknown)"
     # vmsg 6  "$cpu_format" "                    Cores" "$num_co$(cpu_param 'cpu cores'  1)"
-    # vmsg 6  "$cpu_format" "                    Cache" "$white$(cpu_param 'cache size' unknown)"
+    # vmsg 6  "$cpu_format" "                    Cache" "$(cpu_param 'cache size' unknown)"
 }
 
 show_bootcodes() {
