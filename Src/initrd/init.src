@@ -1682,7 +1682,7 @@ breakpoint() {
 
     local bp_time_1=$(get_time)
     env PS1="${green}bp $red$bp$cyan>$nc_co " BP=$bp PATH=$LIVE_BIN:$PATH \
-        setsid cttyhack sh
+        setsid cttyhack sh 17>/dev/null
     local bp_time_2=$(get_time)
     time_0=$((time_0 + bp_time_2 - bp_time_1))
     echo
