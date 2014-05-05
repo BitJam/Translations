@@ -148,7 +148,7 @@ main_wrapper() {
 
     echo "$PRINTK" > /proc/sys/kernel/printk
 
-    breakpoint 0 "before main_core"
+    breakpoint 1 "before main_core"
 
     if [ "$NO_ERR_LOG" ]; then
         main_core
@@ -202,7 +202,7 @@ main_core() {
         vmsg 6 'Populate %s with %s' $(dq /dev) $(cq devtmpfs)
     fi
 
-    breakpoint 1 "before loading modules"
+    breakpoint 2 "before loading modules"
 
     start_hotplug "$DO_HOTPLUG" "$TRACE_LOAD"
     load_kernel_modules "$DO_LOAD" "$MODULE_LIST"
@@ -226,7 +226,7 @@ main_core() {
 
     #[ "$CRYPT_DEV" -o "$CRYPT_LABEL" -o "$CRYPT_UUID" ] && setup_crypt
 
-    breakpoint 2 "before looking for linuxfs file"
+    breakpoint 3 "before looking for linuxfs file"
 
     find_linuxfs_file
 
@@ -235,11 +235,9 @@ main_core() {
     #[ "$PERSIST_FILES" ] && mount -o remount,rw $SQFILE_DEV
     mount -o remount,rw $SQFILE_DEV
 
-    breakpoint 3 "after mounting boot device"
+    breakpoint 4 "after mounting boot device"
 
     prepare_persistence
-
-    breakpoint 4 "after preparing persistence"
 
     mount_persist_device "$PERSIST_FILES" "$FROM_PERSIST"
 
@@ -306,6 +304,7 @@ main_core() {
 
     write_output_files     $OUTPUT_DIR
     old_write_output_files $OUTPUT_DIR
+
     breakpoint 8 "before prepare switch_root"
 
     [ -z "${FINAL_DIR##/*}" ] || FINAL_DIR="/$FINAL_DIR"
