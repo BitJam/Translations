@@ -1288,10 +1288,10 @@ find_linuxfs_file() {
         SQFILE_MP=$BOOT_MP
 
         SQFILE_DEV=$FOUND_DEV
-        BOOT_DEV_TYPE=$(grep "^$FOUND_DEV " /proc/mounts | cut -d" " -f3)
-        case $BOOT_DEV_TYPE in
-            btrfs|ext[234]|f2fs|jfs|reiser4|reiserfs|vfat|xfs) REMASTERABLE=true ;;
-        esac
+
+        mount -o remount,rw $BOOT_MP &>/dev/null
+        dir_has_param "$BOOT_MP" rw && REMASTERABLE=true
+        mount -o remount,rw $BOOT_MP &>/dev/null
 
         SQFILE_FULL=$BOOT_MP/$SQFILE_FILE
         SQFILE_PATH=${SQFILE_FILE%/*}
