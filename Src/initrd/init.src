@@ -1238,6 +1238,8 @@ find_device() {
 
     [ "$try" != 0 ] && msg
 
+    [ "$AUTO_PERSIST" ] && return 100
+
     general_device_error "$find_type" "$type" "$value"
     return $err_ret
 }
@@ -2530,7 +2532,12 @@ prepare_persistence() {
     else
         # if we are on a read-only device and persist was set then set default
         # persist label if persist device was not explicitly given
-        [ -z "$REMASTERABLE" -a -n "$PERSIST" ] && PERSIST_ID=label="$DISTRO-Persist"
+        if [ -z "$REMASTERABLE" -a -n "$PERSIST" ]; then
+            AUTO_PERSIST="$DISTRO-Persist"
+            warn "Persistence requested on a read-only boot device"
+            warn "Will search for a persistence device with the label %s" "$(pqw $AUTO_PERSIST)"
+            PERSIST_ID=label="$AUTO_PERSIST"
+        fi
     fi
 
     PERSIST_PATH=${PERSIST_PATH:-$DEFAULT_PERSIST_PATH}
@@ -2776,10 +2783,17 @@ mount_persist_device() {
         vmsg 7 "     persist_uuid: $PERSIST_UUID"
         PERSIST_FULL_PATH="$PERSIST_MP/$PERSIST_PATH"
     else
-        warn "Could not find any persistence files"
-        #. Could not enable required <type> persistence
-        [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" 'root!'
-        [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" 'home!'
+
+        if [ "$AUTO_PERSIST" ]; then
+            warn "Could not find device with label %s" "$(pqw $AUTO_PERSIST)"
+            warn "Disabling persistence"
+        else
+            warn "Could not find any persistence files"
+            #. Could not enable required <type> persistence
+            [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" 'root!'
+            [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" 'home!'
+        fi
+
         unset WANT_ROOTFS WANT_HOMEFS NEED_ROOTFS NEED_HOMEFS
     fi
 }
