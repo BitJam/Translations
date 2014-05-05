@@ -148,6 +148,8 @@ main_wrapper() {
 
     echo "$PRINTK" > /proc/sys/kernel/printk
 
+    SCREEN_WIDTH=$(stty size 2>/dev/null | cut -d" " -f2)
+
     breakpoint 1 "before main_core"
 
     if [ "$NO_ERR_LOG" ]; then
@@ -737,6 +739,7 @@ do_welcome() {
 
     local cpu_format="%s:$white %s"
     vmsg 6 "$cpu_format"  "             Linux kernel" "$(uname -r)"
+    vmsg 6 "$cpu_format"  "             Screen width" "$SCREEN_WIDTH"
 
     # vmsg 6 "$cpu_format"  "             Architecture" "$(uname -m)"
 
@@ -1720,6 +1723,36 @@ get_seconds() {
     printf "%02d" $dt | sed -r 's/(..)$/.\1/'
 }
 
+bogo_meter() {
+    local width=${1:-$SCREEN_WIDTH} delay=60  dot=.
+    #echo "width: $width"
+    local cnt=$(( width * 80 / 100 ))
+    #echo "  cnt: $cnt"
+    local sleep=$(( 1000000 * delay / cnt ))
+    #echo "sleep: $sleep"
+    while true; do
+        for s in $(seq 1 $cnt); do
+            echo -n "$dot"
+            usleep $sleep
+        done
+        echo
+    done
+}
+
+time_cmd() {
+    local t0=$(get_time)
+    (bogo_meter)&
+    local pid=$!
+    "$@"
+    local ret=$?
+    local t1=$(get_time)
+    local secs=$(get_seconds $((t1 - t0)))
+    kill -9 $pid
+    echo
+    vmsg 5 "command %s took %s seconds" "$(pq $*)" "$(nq $secs)"
+    return $ret
+}
+
 vmsg_old() {
     local msg nflag  level=$1; shift
 
@@ -2595,29 +2628,37 @@ prepare_persistence() {
 
 }
 
+create_persist_files() {
 
-default_makefs_size() {
-    local avail=$1  size=$3  params
-    eval params=\$$2
-    eval local $params
-    [ "$avail" -lt $mid_size ] && factor=1
-    [ "$size" ] || size=$((mid_size + factor * ( avail - mid_size ) / 100))
-    [ $size -gt $max_size ] && size=$max_size
-    [ $size -gt $avail    ] && size=$avail
-    [ $size -lt $min_size ] && return 1
-    echo $size
-    return 0
+    dir_has_param "$SQFILE_DIR" rw || return
+
+    if [ "$NEED_ROOTFS" ]; then
+
+        # Default size for rootfs.new is size of rootfs
+        local default_size rootfs_file=rootfs
+        if [ "$WILL_REMASTER" ]; then
+            default_size=$(stat -c %s $SQFILE_DIR/rootfs 2>/dev/null)
+            msg 'default size: %s' "$(nq $default_size)"
+            [ "$default_size" ] && default_size=$((default_size/1024/1024))
+            rootfs_file=rootfs.new
+        fi
+
+        persist_makefs root $SQFILE_DIR $rootfs_file NEED_ROOTFS $default_size
+        persist_makefs home $SQFILE_DIR homefs       NEED_HOMEFS
+
+    elif [ "$NEED_HOMEFS" ]; then
+        persist_makefs home $SQFILE_DIR homefs       NEED_HOMEFS
+    fi
+
 }
 
 persist_makefs() {
-    local type=$1  dir=$2  file=$3  needed=$4  orig_def_size=$5  full_file=$2/$3
+    local type=$1  dir=$2  file=$3  needed_var=$4  orig_def_size=$5  full_file=$2/$3
 
     [ -e $full_file ] && return
 
-    if [ -z "$needed" -a -n "$AUTO_MAKE_FS" ]; then
-        vmsg 5 "Not auto-creating %s file because it was not required (no !)" $(fq $file)
-        return
-    fi
+    eval local needed=\$$needed_var
+    unset $needed_var
 
     local free=$(free_space $dir)
     local avail=$((free - MKFS_FREE_MARGIN))
@@ -2654,6 +2695,7 @@ persist_makefs() {
         default_cnt=$cnt
     fi
 
+    # FIXME
     [ "$sizes" ] || return
 
    # Include all available in menu if it is appropriate
@@ -2661,23 +2703,22 @@ persist_makefs() {
     [ $max -lt $avail -a $avail -lt $MAX_MKFS_SIZE ] && sizes="$sizes $avail"
 
     local fs_type fs_size auto_mode create_mode quit=$(printf "quit")
-    [ "$needed" ] && quit=
+    #[ "$needed" ] && quit=
 
     vmsg 1 "%s persistence was requested but no %s file was found" $(cq $type) $(fq $file)
 
     heading "create %s persistence file" "$(fq $file)"
     vmsg 1 "Default size: %s  Default type: %s" $(nq $default_size) $(pq ext3)
+    warn "Warning: this operation can take a few minutes"
 
     if [ "$AUTO_MAKE_FS" ]; then
         auto_mode=true
     else
         local title=$(printf "Create %s file, manually or automatically" $(fq $file))
-        my_select "$title" create_mode 0 1 "create automatically" "create custom" $quit
+        my_select "$title" create_mode 0 1 "create automatically" "create custom" "$quit"
         case $create_mode in
-            "$quit")
-                return ;;
-            "create automatically")
-                auto_mode=true;;
+                            "quit") return ;;
+            "create automatically") auto_mode=true;;
         esac
     fi
 
@@ -2690,16 +2731,15 @@ persist_makefs() {
 
         echo
         vmsg 1 "There is %s Meg available on the device" $(nq $avail)
-        my_select "$title" fs_size 4 "$default_cnt" $sizes $quit
+        my_select "$title" fs_size 4 "$default_cnt" $sizes "$quit"
         [ "$fs_size" = "quit" ] && return
 
         vmsg 1 "Filesystem size %s Meg" $(nq $fs_size)
 
-        [ "$fs_size" = "quit" ] && return
         title=$(printf "Please select file system for %s file" $(pqw $file))
 
         echo
-        my_select "$title" fs_type 0 2 ext2 ext3 ext4 $quit
+        my_select "$title" fs_type 0 2 ext2 ext3 ext4 "$quit"
         [ "$fs_type" = "quit" ] && return
 
     fi
@@ -2713,8 +2753,8 @@ persist_makefs() {
     breakpoint t "Before makefs"
 
     if dd if=/dev/zero of=$full_file bs=1M count=0 seek=$fs_size &>/dev/null; then
-        if ! mkfs.$fs_type -q -F $full_file; then
-            err "The % command failed.  Deleting %s file" $(cq mkfs.$fs_type) $(pqe $file)
+        if ! time_cmd mkfs.$fs_type -q -F $full_file; then
+            err "The % command failed.  Deleting %s file" $(cqe mkfs.$fs_type) $(pqe $file)
             rm -f $full_file
         fi
     else
@@ -2724,10 +2764,25 @@ persist_makefs() {
 
     test -e $full_file && msg "Created persistence file %s" $(fq $file)
 
+    eval $needed_var=\$needed
+
     set_path $LIVE_BIN
     umount $SQFS_MP
 
     breakpoint t "After makefs umount"
+}
+
+default_makefs_size() {
+    local avail=$1  size=$3  params
+    eval params=\$$2
+    eval local $params
+    [ "$avail" -lt $mid_size ] && factor=1
+    [ "$size" ] || size=$((mid_size + factor * ( avail - mid_size ) / 100))
+    [ $size -gt $max_size ] && size=$max_size
+    [ $size -gt $avail    ] && size=$avail
+    [ $size -lt $min_size ] && return 1
+    echo $size
+    return 0
 }
 
 mount_persist_device() {
@@ -2735,42 +2790,18 @@ mount_persist_device() {
 
     [ "$persist_files" ] || return
 
-    heading "Mount persistence device (if needed)"
-
-    [ "$from_persist" ] || : ${PERSIST_ID:=name=$FOUND_DEV}
+    [ "$from_persist" ] || : ${PERSIST_ID:=name=$SQFILE_DEV}
 
     # Create persistence files if they don't already exist
-    if [ "$PERSIST_ID" = "name=$FOUND_DEV" ]; then
-        if [ "$NEED_ROOTFS" ]; then
+    [ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && create_persist_files
 
-            # Default size for rootfs.new is size of rootfs
-            local default_size rootfs_file=rootfs
-            if [ "$WILL_REMASTER" ]; then
-                default_size=$(stat -c %s $SQFILE_DIR/rootfs 2>/dev/null)
-                msg 'default size: %s' "$(nq $default_size)"
-                [ "$default_size" ] && default_size=$((default_size/1024/1024))
-                rootfs_file=rootfs.new
-            fi
-
-            persist_makefs root $SQFILE_DIR $rootfs_file "$NEED_ROOTFS" $default_size
-
-        fi
-
-        [ "$NEED_HOMEFS" ] && persist_makefs home $SQFILE_DIR homefs "$NEED_HOMEFS"
-    fi
-
-    # # Default is to use device that holds the linuxfs or iso file
-    # if [ -z "$PERSIST_ID" ]; then
-    #     # unless we are to scan for the persist files
-    #     [ "$FROM_PERSIST" ] || PERSIST_ID=name=$FOUND_DEV
-    #     msg 'set PERSIST_ID to %s' $PERSIST_ID
-    # fi
+    heading "Mount persistence device (if needed)"
 
     ALWAYS_SCAN=$FROM_PERSIST
     FROM_TYPE=${FROM_PERSIST:-usb,hd}
 
     # FIXME: Does this always work?
-    [ "$PERSIST_ID" = "name=$FOUND_DEV" ] && PERSIST_RETRY=0
+    [ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && PERSIST_RETRY=0
 
     find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
     if [ $? = 0 ]; then
