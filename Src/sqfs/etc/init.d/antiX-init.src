@@ -252,8 +252,12 @@ set_default_desktop() {
     # Now change the default in the .xinitrc files
     echo_live "Setting default desktop to %s" $(pquote $desktop)
 
+    local default_file=/home/demo/.desktop-session/default-desktop
+    mkdir -p $(dirname $default_file)
+    echo $desktop > $default_file
+    chown -R demo:users $default_file
+
     local regex="s/^DEFAULT_DESKTOP=.*/DEFAULT_DESKTOP=\"$desktop\"/"
-    sed -i $regex $xinitrc
 
     local demo_xinitrc=/home/demo/.xinitrc
     if [ -e $demo_xinitrc ]; then
