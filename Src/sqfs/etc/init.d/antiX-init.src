@@ -419,11 +419,15 @@ Keyboard_Out
 
     enable_xkb="s/^#\?setxkbmap.*/setxkbmap -layout \"$XKBLAYOUT\" -option \"$XKBOPTIONS\" -variant \"$XKBVARIANT\"/"
 
-    #if we have xfce 
+    #if we have xfce
     enable_xkb_xfce="s/^#\?Exec.*/Exec=setxkbmap -layout \"$XKBLAYOUT\" -option \"$XKBOPTIONS\" -variant \"$XKBVARIANT\"/"
-    xfce_xkbset=/home/*/.config/autostart/Xkbset.desktop 
-    sed -i -e "$enable_xkb_xfce" $xfce_xkbset
-    
+
+    local xkb_file
+    for xkb_file in /home/*/.config/autostart/Xkbset.desktop; do
+        [ -e $xkb_file ] || continue
+        sed -i -e "$enable_xkb_xfce" $xkb_file
+    done
+
     for wm in $MENU_WMs;  do
         f1=/home/demo/.$wm/startup
         f2=/etc/skel/.$wm/menu
