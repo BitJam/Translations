@@ -6,7 +6,7 @@
 # Required-Stop:
 # Should-Start:
 # Should-Stop:
-# Default-Start:     S 
+# Default-Start:     S
 # Default-Stop:
 # Short-Description: antiX-init
 # Description: localize /etc/skel, create /home/demo, customize X, mirrors, set default desktop
