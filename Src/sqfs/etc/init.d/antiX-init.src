@@ -268,7 +268,7 @@ set_default_desktop() {
 
 add_fstab_swap() {
     echo_live 'Possibly adding swap partitions to fstab'
-    make-fstab --verbose --swap-only
+    make-fstab --swap-only
 }
 
 automount_and_fstab() {
@@ -299,7 +299,7 @@ automount_and_fstab() {
     fi
 
     # Mount partitions while building fstab file
-    local fstab_opt=--verbose
+    local fstab_opt=
     case ",$CMD_MOUNT" in
         ,all|,usb)
             fstab_opt="$fstab_opt --mount=$CMD_MOUNT" ;;
@@ -309,7 +309,7 @@ automount_and_fstab() {
             error "Invalid %s option %s" 'mount/automount' $(pquote $CMD_MOUNT)
     esac
 
-    echo_live "Building %s via %s" "$(pquote /etc/fstab)" "$(pquote "make-fstab $fstab_opt")"
+    #echo_live "Building %s via %s" "$(pquote /etc/fstab)" "$(pquote "make-fstab $fstab_opt")"
     grep -q -e ^/dev -e ^UUID= -e ^LABEL=  /etc/fstab || rm /etc/fstab
     make-fstab $fstab_opt
 
