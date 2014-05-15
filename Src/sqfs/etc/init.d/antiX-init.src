@@ -189,7 +189,7 @@ all_valid_desktops() {
 check_icon_manager() {
     local icon=$1 desktop=$2
 
-    [ -z "$desktop" ]            && return 1 
+    [ -z "$desktop" ]            && return 1
     [ -z "${desktop##$icon-*}" ] || return 1
 
     RAW_DESKTOP=${desktop#$icon-}
@@ -208,8 +208,8 @@ set_default_desktop() {
     local desktop=$(echo $1 | tr "[A-Z]" "[a-z]")
 
     local xinitrc=/etc/skel/.xinitrc
-    local default 
-    # Grab default desktop 
+    local default
+    # Grab default desktop
     default=$(sed -nr "s/^\s*DEFAULT_DESKTOP=\"?'?(.*)/\1/p" $xinitrc | tail -n 1)
     default=${default%\"}
     default=${default%\'}
@@ -226,7 +226,7 @@ set_default_desktop() {
     fi
 
     # Check for valid icon-manager <icon>- prefix
-    local DESKTOP RAW_DESKTOP 
+    local DESKTOP RAW_DESKTOP
     for icon in $ICON_MANAGERS; do
         check_icon_manager "$icon" "$desktop" && break
     done
@@ -359,7 +359,7 @@ automount_and_fstab() {
         antiX) automount_and_fstab;;
       MX|MX-*) add_fstab_swap     ;;
             *) error 'Unknown_distro %s' "$(pquote $DISTRO)"
-    esac   
+    esac
 
     #-jbb: for debugging
     unset COUNTRY WM_LANG KEYBOARDS KEYTABLE LANG MIRROR TZ XKBLAYOUT CONSOLE_FONT
