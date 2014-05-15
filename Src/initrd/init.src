@@ -159,7 +159,7 @@ main_wrapper() {
             | sed -e "s/^/${yellow}Error: $red/" -e "s/$/$nc_co/" | tee -a $MY_LOG; done
     fi
 
-    write_log_files $MY_LOG $LOG_FILE
+    write_log_files $MY_LOG $NEW_ROOT/$LOG_FILE
 
     # Nota Bene: when error log is enabled,  main_core() runs in a subshell
     # so it cannot affect our variables.
@@ -301,8 +301,8 @@ main_core() {
         && msg "Enabled %s persistence" "$(cq home)"
 
     [ "$DO_XTRA"       ] && copy_xtra    $DEFAULT_DIR
-    [ "$DO_AUTO_LOGIN" ] && auto_login   "$AUTO_LOGIN_PROG" "$AUTO_LOGIN_TERMS"
-    [ "$DO_FANCY"      ] && fancy_prompt "$FANCY_PROMPT"
+    [ "$DO_AUTO_LOGIN" ] && auto_login   "$AUTO_LOGIN_PROG" "$AUTO_LOGIN_TERMS" "$NEW_ROOT"
+    [ "$DO_FANCY"      ] && fancy_prompt "$FANCY_PROMPT" "$NEW_ROOT"
 
     write_output_files     $OUTPUT_DIR
     old_write_output_files $OUTPUT_DIR
@@ -1356,9 +1356,9 @@ mount_linuxfs() {
             || fatal "Could not mount %s as a %s file" $sqfile_full 'filesystem'
     fi
 
-    link_top_dirs $sqfs_mp $TOP_BIN_DIRS
+    #link_top_dirs $sqfs_mp $TOP_BIN_DIRS
 
-    set_path $LIVE_BIN:/sbin:/bin/usr/sbin:/usr/bin
+    #set_path $LIVE_BIN:/sbin:/bin/usr/sbin:/usr/bin
 
     SQFS_VID=$(get_vid $vid_file)
 
@@ -1410,7 +1410,7 @@ mount_aufs() {
 
     # Temporary top level symlinks to simulate real system
     # These will disappear when we switch_root
-    link_top_dirs $aufs_mp $TOP_DIRS
+    #link_top_dirs $aufs_mp $TOP_DIRS
 
     # No longer needed, were using the aufs now via symlinks
     rm -f $LIVE_DIR/$ld_cache
@@ -1419,7 +1419,7 @@ mount_aufs() {
     mkdir -p   $aufs_mp/tmp /var/tmp
     chmod 1777 $aufs_mp/tmp /var/tmp
 
-    set_path "/usr/sbin:/usr/bin:/sbin:/bin:$LIVE_BIN"
+    #set_path "/usr/sbin:/usr/bin:/sbin:/bin:$LIVE_BIN"
 }
 
 link_top_dirs() {
@@ -3081,22 +3081,25 @@ _copy_homefs() {
 }
 
 auto_login() {
-    local dir prog=$1  terms=$2
+    local dir file full prog=$1  terms=$2 root=$3
     [ -n "$prog" -a -n "$terms" ] || return
 
-    for dir in $(echo $PATH | sed 's/:/ /g'); do
-        local full=$dir/$prog
+    for dir in /sbin /bin /usr/sbin /usr/bin /usr/local/bin ; do
+        file=$dir/$prog
+        full=$root/$file
         [ -e "$full" ] || continue
         db_msg "Enable autologin"
-        sed -i "s=^\([$terms]\)\(:[0-9]\+:respawn:\).*=\1\2$prog tty\1 login -f root=" /etc/inittab
+        sed -i "s=^\([$terms]\)\(:[0-9]\+:respawn:\).*=\1\2$file tty\1 login -f root=" $root/etc/inittab
         break
     done
 }
 
 fancy_prompt() {
-    local prompt=$1  bashrc=/etc/skel/.bashrc  fp_prog=/usr/local/bin/fancy-prompts.bash
+    local prompt=$1  dir=$2
+    local bashrc=$dir/etc/skel/.bashrc  fp_prog=/usr/local/bin/fancy-prompts.bash
+
     local cmd=${prompt%%\ *}
-    [ -r $fp_prog -a -n "$prompt" ] || return
+    [ -r $dir/$fp_prog -a -n "$prompt" ] || return
 
     if grep -q $cmd $bashrc; then
         db_msg "fancy prompts were already enabled"
@@ -3108,8 +3111,8 @@ fancy_prompt() {
 
     local file full_file
     for file in .bashrc .profile; do
-        full_file=/etc/skel/$file
-        [ -f "$full_file" ] && cp $full_file /root
+        full_file=$dir/etc/skel/$file
+        [ -f "$full_file" ] && cp $full_file $dir/root
     done
 }
 
