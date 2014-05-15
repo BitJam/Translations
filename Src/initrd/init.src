@@ -326,18 +326,56 @@ main_core() {
 #------------------------------------------------------------------------------
 
 system_mount() {
-    local dir=$1  full=$2
+    local dir=$1  dev=$2  tmp=$3
 
     mkdir -p $dir/proc $dir/sys $dir/dev
 
     mount -t proc   proc       $dir/proc
     mount -t sysfs  sys        $dir/sys
 
-    [ "$full" ] && mount -t devtmpfs devtmpfs $dir/dev
+    [ "$dev" ] && mount -t devtmpfs devtmpfs $dir/dev
 
     mkdir -p $dir/dev/pts
     mount -t devpts devpts     $dir/dev/pts
+
+    [ "$tmp" ] || return
+
+    local tdir fdir
+    for tdir in tmp var/tmp; do
+        fdir=$dir/$tdir
+        [ -d $fdir ] && mount_tmpfs $fdir 10 $tdir
+    done
 }
+
+system_mountpoints() {
+    local dev mp other ret=1 dir=$1
+
+    while read dev mp other; do
+        case $mp in $dir/*)
+            echo -n "$mp "
+            ret=0 ;;
+        esac
+    done << Read_Mounts
+$(tac /proc/mounts)
+Read_Mounts
+    return $ret
+}
+
+system_umount() {
+    local mp list i  dir=$1
+
+    for i in $(seq 1 4); do
+        list=$(system_mountpoints $dir) || return 0
+        vmsg 7 'umount %s' "$(pq $list)"
+        for mp in $list; do
+            umount $mp
+        done
+    done
+    list=$(system_mountpoints $dir) || return 0
+    err "Unable to unmount %s" "$(wq $list)"
+    return 1
+}
+
 
 make_nodes() {
     local dir=$1
@@ -1572,12 +1610,24 @@ should_fsck() {
 
 do_fsck() {
     local err ret output dev=$1  sdev=$(pq ${1##*/})
+    local dir=$SQFS_MP
+
+    system_mount $dir full tmp
+
+    # Need /etc/mtab symlink for tune2fs
+    mount --bind /live/etc $dir/etc
+
+    breakpoint f "Before fsck"
 
     vmsg 2 "fsck$white $dev"
-    output=$(e2fsck -n $dev 2>&1)
+    output=$(chroot $dir /sbin/e2fsck -n $dev 2>&1)
     ret=$?
     echo "$output" | tee -a $MY_LOG
-    tune2fs -C 1 $dev
+    chroot $dir /sbin/tune2fs -C 1 $dev
+
+    system_umount $dir
+
+    breakpoint f "After fsck"
 
     case $ret in
 	    0) vmsg 1    "There were no errors on %s"            "$sdev" ; err=0 ;;
@@ -1608,7 +1658,7 @@ fsck_boot_dev() {
 
     mount_linuxfs "$sqfs_mp" "$sq_file" "$wrap_mp"
 
-    breakpoint f "After mounting linuxfs before fsck"
+    #breakpoint f "After mounting linuxfs before fsck"
 
     do_fsck $dev
 
@@ -1923,7 +1973,7 @@ final_umount() {
         done
     done
     list=$(mountpoint_list) || return 0
-    err "Unable to unmount %s" "$white$list"
+    err "Unable to unmount %s" "$(pq $list)"
     return 1
 }
 
@@ -1936,10 +1986,10 @@ safe_shutdown() {
     final_umount && vmsg 1 "Unmount successful"
     breakpoint u "final umount"
     if [ "$ask" ]; then
-        vmsgN 1 "Press <Enter> to %s" "$white$cmd$m_co"
+        vmsgN 1 "Press <Enter> to %s" "$(wq $cmd)"
         read x
     fi
-    vmsg -1 "Will now %s the system" "$white$cmd$m_co"
+    vmsg -1 "Will now %s the system" "$(wq $cmd)"
     #sleep 1
     exec $cmd -f -n
 }
