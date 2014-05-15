@@ -138,14 +138,14 @@ set_dpi() {
     for file in /etc/slim.conf /usr/share/slim/themes/antiX/slim-install.conf; do
         [ -e $file ] || continue
         echo_live 'In file: %s' $(pquote $file)
-        echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi) 
+        echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi)
         sed -i -e "s/^xserver_arguments.*/xserver_arguments -dpi $dpi -nolisten tcp/" $file
     done
 
     for file in /etc/lightdm/lightdm.conf; do
         [ -e $file ] || continue
         echo_live "In file: %s" $(pquote $file)
-        echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi) 
+        echo_live "Setting %s to %s" $(pquote dpi) $(pquote $dpi)
         sed -i -r "s/^#?\s*(xserver-command=X).*/\1 -dpi $dpi/" $file
     done
 }
