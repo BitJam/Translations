@@ -2100,11 +2100,19 @@ cleanse_dev() {
     esac
 }
 
+general_device_error() {
+    #msg "gde($*)"
+    case $2 in
+        uuid|label) label_error  "$@" ;;
+              name) device_error "$@" ;;
+    esac
+}
+
 label_error() {
     local find_type=$1  param=$1$2 name=$2  value=$3  field=$(echo $2 | tr 'a-z' 'A-Z')
-    warn "$hbar"
+    ##warn "$hbar"
     err "Fatal Error"
-    err "No device with %s was found" "$(cqe $name=$value)"
+    err "No device with %s was found" "$name $(cqe $value)"
 
     vmsg_nc 3 "Valid %s" "${name}s:"
     local line val LABEL TYPE UUID
@@ -2116,18 +2124,10 @@ label_error() {
     done <<EOT
 $(blkid | sed 's/^[^:]*://')
 EOT
-    warn "$hbar"
+    #warn "$hbar"
     case $from_type in
         persist) _error "" c "continue" ;;
               *) _error                 ;;
-    esac
-}
-
-general_device_error() {
-    #msg "gde($*)"
-    case $2 in
-        uuid|label) label_error  "$@" ;;
-              name) device_error "$@" ;;
     esac
 }
 
@@ -2135,9 +2135,9 @@ device_error() {
     local find_type=$1  type=$2  value=$3
     local valid_devs=$(echo $(most_block_devices) | sed "s/^/$white    /");
     if [ "$find_type" = 'persist' ]; then
-        _non_fatal "$(printf "Could not find device %s" "$(pqh $type)")" "Valid devices": "$valid_devs"
+        _non_fatal "$(printf "Could not find device %s" "$(pqh $value)")" "Valid devices": "$valid_devs"
     else
-        _fatal "$(printf "Could not find device %s" "$(pqh $type)")" "Valid devices": "$valid_devs"
+        _fatal "$(printf "Could not find device %s" "$(pqh $value)")" "Valid devices": "$valid_devs"
     fi
 }
 
