@@ -431,7 +431,7 @@ read_cmdline_params()
 
                          from=*) FROM_TYPE=$value     ; ALWAYS_SCAN=true         ;;
 
-                      persist=*) PERSIST=$PERSIST,$value                         ;;
+                  persist=*|p=*) PERSIST=$PERSIST,$value                         ;;
                         persist) PERSIST=$PERSIST,root,home                      ;;
 
                         sqext=*) SQFILE_EXT=$value                               ;;
