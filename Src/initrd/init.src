@@ -2884,11 +2884,13 @@ mount_persist_device() {
     ALWAYS_SCAN=$FROM_PERSIST
     FROM_TYPE=${FROM_PERSIST:-usb,hd}
 
-    # FIXME: Does this always work?
+    # FIXME: Does this always work? try without it now
     [ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && PERSIST_RETRY=0
 
     find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
-    if [ $? = 0 ]; then
+    local ret=$?
+
+    if [ $ret -eq 0 ]; then
 
         PERSIST_MP=$FOUND_MP
         PERSIST_DEVICE=$FOUND_DEV
@@ -2897,20 +2899,21 @@ mount_persist_device() {
         vmsg 7 "   persist_device: $PERSIST_DEVICE"
         vmsg 7 "     persist_uuid: $PERSIST_UUID"
         PERSIST_FULL_PATH="$PERSIST_MP/$PERSIST_PATH"
+
     else
 
-        if [ "$AUTO_PERSIST" ]; then
-            warn "Could not find device with label %s" "$(pqw $AUTO_PERSIST)"
-            warn "Disabling persistence"
-        else
-            warn "Could not find any persistence files"
-            #. Could not enable required <type> persistence
-            [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" 'root!'
-            [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" 'home!'
-        fi
+        case $ret in
+            10|20|30) warn "Could not find persistence device"     ;;
+                   *) warn "Could not find any persistence files"  ;;
+        esac
+
+        #. Could not enable required <type> persistence
+        [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" $(pqh 'root!')
+        [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" $(pqh 'home!')
 
         unset WANT_ROOTFS WANT_HOMEFS NEED_ROOTFS NEED_HOMEFS
     fi
+
 }
 
 fsck_persist_dev() {
