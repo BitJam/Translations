@@ -1013,19 +1013,28 @@ from_filter() {
     return $?
 }
 
+find_boot_file() {
+    local ret file=$2
+    find_files boot "$@"
+    ret=$?
+
+    case $ret in
+        10) fatal "No %s devices found" block             ;;
+        20) fatal "No %s devices found" $(pqh $FROM_TYPE) ;;
+        30) _fatal "" \
+            "$(printf "The %s parameter is blocking device %s" \
+            $(pqh from=$FROM_TYPE) "$(pqh $DEVICE_LIST)")"     \
+            "$(printf "Even though device %s has %s" "$(pqh $DEVICE_LIST)" "$(pqh $device_id)")" \
+            "$(printf "Remove the %s boot parameter to allow that device to be scanned" \
+            $(cq $FROM_TYPE))" ;;
+        40) fatal "Device found but could not find %s file on device"  $(pqh $file) ;;
+    esac
+
+    return $ret
+}
+
 #------------------------------------------------------------------------------
 # Function: find_files <files> <mntpnt> <dev> <label> <uuid> <retry>
-#
-# First find device specified by either <dev>, <label>, or <uuid>.  If none of
-# these are specified then we scan all possible devices.  Then for all devices
-# (might be one device) we try to mount each device and if we can mount it
-# we look for at least one file in our <files> list.  If found, we exit with
-# success after setting FOUND_DEV to the device that worked.
-#
-# If there is any failure along the way, we wait one second and then try all
-# over again.  If the error was due to not finding the device associated with
-# <device>, <label>, or <uuid>, then the error is fatal.  (Could change this if
-# needed but this is simplest).
 #
 # The outer wrapper lets us show the loop times regardless of how we left the
 # main code in _find_files().
@@ -1040,16 +1049,7 @@ find_files() {
     vmsg 6 "Spent %s seconds looking for %s file(s) %s" $(nq $elapsed) $(fq $find_type) "$(fq $files)"
     [ "$loop_times" ] && vmsg 6 "loop times:$num_co$loop_times"
 
-    case $ret in
-        10) fatal "No %s devices found" block             ;;
-        20) fatal "No %s devices found" $(fqe $FROM_TYPE) ;;
-        30) _fatal "" \
-            "$(printf "The %s parameter is blocking device %s" \
-            $(cq from=$FROM_TYPE) "$(dq $DEVICE_LIST)")"     \
-            "$(printf "Even though device %s has %s" "$(dq $DEVICE_LIST)" "$(cq $device_id)")" \
-            "$(printf "Remove the %s boot parameter to allow that device to be scanned" \
-            $(cq $FROM_TYPE))" ;;
-    esac
+    [ "$find_type" != boot ] && return $ret
 
     return $ret
 }
@@ -1073,7 +1073,7 @@ _find_files() {
     # Stay in loop until success or time goal_t is reached
     local goal_t=$((start_t + retry_time * 100))
 
-    local do_delay said_retry
+    local do_delay said_retry mounted_device
 
     while [ -z "$final_try" ]; do
 
@@ -1162,6 +1162,9 @@ _find_files() {
         # specified
         #----------------------------------------------------------------------
         else
+            # FIXME: perhaps only do this for name= and uuid= not label=
+            [ "$mounted_device" ] && return 40
+
             find_device "$find_type" "$try" "$final_try" "$device_id" || return $?
             if [ -z "$DEVICE_LIST" ]; then
                 vmsg_if $vthresh "%s No %s devices yet found" "$cnt_up" $(pq $FROM_TYPE)
@@ -1213,10 +1216,12 @@ _find_files() {
             mntpnt="$(get_mountpoint $dev)"
             if [ "$mntpnt" ]; then
                 mounted=
+                mounted_device=true
                 [ "$already" ] || vmsg 5 "Device %s is already mounted at %s"  "$(dq $dev)" "$(mpq $mntpnt)"
                 already=true
             else
                 try_mount $dev $mp_orig || continue
+                mounted_device=true
                 mounted=true
                 mntpnt=$mp_orig
             fi
@@ -1229,7 +1234,7 @@ _find_files() {
                         $find_type "$(fq $dev)" "${to_co}$mntpnt${m_co}"
 
                     #. <type> device filesystem: <filesystem-name>
-                    vmsg 6 "%s device filesystem: %s" $find_type \
+                    vmsg 5 "%s device filesystem: %s" $find_type \
                         "$(cq $(grep " $mntpnt " /proc/mounts | cut -d" " -f3,4))"
 
                     local short_dev=${dev##*/}
@@ -1249,7 +1254,7 @@ _find_files() {
         done
     done
     [ "$try" != "0" ] && msg
-    return 4
+    return 90
 }
 
 #------------------------------------------------------------------------------
@@ -1302,8 +1307,8 @@ find_linuxfs_file() {
         heading "${cheat_co}fromiso"
 
         #. Could not find <type> file <file name>
-        find_files boot "$ISO_FILE" "$ISO_DEV_MP" "$BOOT_ID" "$RETRY_TIME" \
-            || fatal "Could not find %s file %s" iso "$(fqe $ISO_FILE)"
+        find_boot_file "$ISO_FILE" "$ISO_DEV_MP" "$BOOT_ID" "$RETRY_TIME" \
+            || fatal "Could not find %s file %s" iso "$(pqh $ISO_FILE)"
 
         local iso_full=$ISO_DEV_MP/$ISO_FILE
         DEFAULT_PERSIST_PATH=${ISO_FILE%/*}
@@ -1326,7 +1331,7 @@ find_linuxfs_file() {
 
     else
 
-        find_files boot "$SQFILE_FILE" "$BOOT_MP" "$BOOT_ID" "$RETRY_TIME" \
+        find_boot_file "$SQFILE_FILE" "$BOOT_MP" "$BOOT_ID" "$RETRY_TIME" \
             || linuxfs_error "Could not find %s file %s" "$LINUXFS_NAME" "$(fqe \"$SQFILE_FILE\")"
 
         SQFILE_MP=$BOOT_MP
