@@ -1893,14 +1893,15 @@ _error() {
 
     if [ "$type" ]; then
         warn
-        warn $hbar
+        #warn $hbar
         err "$type"
+        #warn $hbar
         [ "$1" ] && msg "${hi_co}$1"
         shift
         for arg; do
             msg "${hi_co}$arg"
         done
-        warn $hbar
+        ### warn $hbar
         err
     fi
 
@@ -1911,13 +1912,13 @@ _error() {
     local fmt="    $yellow%s$cyan =$white %s$nc_co\n"
     local reply
     while [ true ]; do
-        echo $m_co$tbar$nc_co
+        ### echo $m_co$tbar$nc_co
 
         [ "$cmsg1" ] && printf "$fmt" "$cmsg1" "$cmsg2"
         printf "$fmt" p "power off"
         printf "$fmt" r "reboot"
 
-        echo $m_co$tbar$nc_co
+        ### echo $m_co$tbar$nc_co
         echo -n "$prompt$nc_co "
         read reply
         case $reply in
