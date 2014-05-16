@@ -2698,7 +2698,12 @@ create_persist_files() {
 
     dir_has_param "$SQFILE_DIR" rw || return
 
+    local make_homefs
     if [ "$NEED_ROOTFS" ]; then
+
+        # Do we also make the homefs file?
+        make_homefs=$WANT_HOMEFS
+        [ -e $SQFILE_DIR/rootfs -o -e $SQFILE_DIR/rootfs.new ] && make_homefs=
 
         # Default size for rootfs.new is size of rootfs
         local default_size rootfs_file=rootfs
@@ -2710,12 +2715,11 @@ create_persist_files() {
         fi
 
         persist_makefs root $SQFILE_DIR $rootfs_file NEED_ROOTFS $default_size
-        persist_makefs home $SQFILE_DIR homefs       NEED_HOMEFS
 
-    elif [ "$NEED_HOMEFS" ]; then
-        persist_makefs home $SQFILE_DIR homefs       NEED_HOMEFS
     fi
 
+    [ -n "$NEED_HOMEFS" -o -n "$make_homefs" ] \
+        && persist_makefs home $SQFILE_DIR homefs NEED_HOMEFS
 }
 
 persist_makefs() {
