@@ -373,7 +373,7 @@ system_umount() {
         done
     done
     list=$(system_mountpoints $dir) || return 0
-    err "Unable to unmount %s" "$(wq $list)"
+    err "Unable to unmount %s" "$(hq $list)"
     return 1
 }
 
@@ -1005,7 +1005,7 @@ from_filter() {
 
     #. Invalid <parameter-name> value(s) <bad values>
     [ "$invalid_scan" ] \
-        && _fatal "$(printf "Invalid %s values(s) %s" "$(cqe from=)" "$(cqe $invalid_scan)")" \
+        && _fatal "$(printf "Invalid %s values(s) %s" "$(pqh from=)" "$(pqh $invalid_scan)")" \
         "$(printf "Valid values are %s" "$(cq cd hd usb all)")"
 
     [ "$FILTERED_LIST" ]
@@ -1199,7 +1199,7 @@ _find_files() {
         # more window dressing
         if [ -n "$have_devices" -a "$last_list" != "$DEVICE_LIST" ]; then
             msg
-            msg "Found new device(s) %s" "$(wq $DEVICE_LIST)"
+            msg "Found new device(s) %s" "$(hq $DEVICE_LIST)"
         fi
         last_list=$DEVICE_LIST
 
@@ -1314,7 +1314,7 @@ find_linuxfs_file() {
         # Mount the iso file
         mkdir -p $ISO_FILE_MP
         mount -t iso9660 -o loop,ro $iso_full $ISO_FILE_MP \
-            || fatal "Could not mount %s as a %s file" "$(fqe $iso_full)" 'iso'
+            || fatal "Could not mount %s as a %s file" "$(pqh $iso_full)" 'iso'
 
         # Find the linuxfs file
         SQFILE_FULL="$ISO_FILE_MP/$SQFILE_FILE"
@@ -1352,9 +1352,9 @@ linuxfs_error() {
     local all_devices=$(echo $(most_block_devices));
 
     _fatal "$msg" \
-        "$(printf "     Searched devices: %s" "$white$device_list")" \
-        "$(printf "       Searched types: %s" "$white$FROM_TYPE")"   \
-        "$(printf "    All block devices: %s" "$white$all_devices")" \
+        "$(printf "     Searched devices: %s" "${hi_co}$device_list")" \
+        "$(printf "       Searched types: %s" "${hi_co}$FROM_TYPE")"   \
+        "$(printf "    All block devices: %s" "${hi_co}$all_devices")" \
         "" \
         "$(printf "Please contact %s at %s" "$DEVELOPER" "$DEV_EMAIL")"
 }
@@ -1367,8 +1367,8 @@ check_kernel_version() {
     [ -d $mp$mod_dir ] && return
 
     _non_fatal "Kernel version mismatch" \
-        "$(printf "Kernel version %s" $(pq $kversion))" \
-        "$(printf "The module directory %s is missing" $(pq $mp$mod_dir))"
+        "$(printf "Kernel version %s" $(pqh $kversion))" \
+        "$(printf "The module directory %s is missing" $(pqh $mp$mod_dir))"
 }
 
 #==============================================================================
@@ -1431,7 +1431,7 @@ mount_aufs() {
 
     if [ -n "$PERSIST_ROOT" -a -n "$STATIC_ROOT" ]; then
         #. Enable <type> persistence
-        msg "Enable %s persistence" 'static rootfs'
+        msg "Enable %s persistence" "$(pq static rootfs)"
         aufs_arg="$rootfs_mp:$sqfs_mp=ro"
     else
         STATIC_ROOT=
@@ -1570,7 +1570,7 @@ should_fsck() {
     if [ "$SB_MAGIC" != 61267 ]; then
         [ "$FORCE_FSCK" ] \
             && warn 'Cannot check %s filesystem on device %s.  Not an ext2/3/4 filesystem.' \
-                "$(pqw $name)" $(pqw $sdev)
+                "$(pqw $name)" "$(pqw $sdev)"
         return 1
     fi
 
@@ -1669,7 +1669,7 @@ fsck_boot_dev() {
     umount $mp
 
     # Now mount the boot device again so no one knows we were here
-    try_mount $dev $mp || fatal "Could not remount boot device %s" "$white$dev"
+    try_mount $dev $mp || fatal "Could not remount boot device %s" "$(pqh $dev)"
 }
 
 #==============================================================================
@@ -1706,7 +1706,7 @@ custom_code() {
         [ "$desc" ] && vmsg 7 'Run custom code %s: %s' "$white$desc$m_co" "$(fq $file)"
         . $file
     else
-        non_fatal 'Errors found in custom code: %s.  Skipping' "$(fqe $file)"
+        non_fatal 'Errors found in custom code: %s.  Skipping' "$(pqh $file)"
     fi
 }
 
@@ -1760,9 +1760,10 @@ mpq()    { echo "$mp_co$*$m_co"           ;}
 nq()     { echo "$num_co$*$m_co"          ;}
 nqw()    { echo "$num_co$*$warn_co"       ;}
 pq()     { echo "$hi_co$*$m_co"           ;}
-pqe()    { echo "$hi_co$*$err_co"         ;}
+pqe()    { echo "$bold_co$*$err_co"       ;}
 pqw()    { echo "$hi_co$*$warn_co"        ;}
-wq()     { echo "$white$*$m_co"           ;}
+pqh()    { echo "$m_co$*$hi_co"           ;}
+hq()     { echo "$hi_co$*$m_co"           ;}
 
 get_time() { cut -d" " -f22 /proc/self/stat ;}
 
@@ -1892,7 +1893,7 @@ _error() {
         [ "$1" ] && msg "${hi_co}$1"
         shift
         for arg; do
-            msg "$arg"
+            msg "${hi_co}$arg"
         done
         warn $hbar
         err
@@ -1984,10 +1985,10 @@ safe_shutdown() {
     final_umount && vmsg 1 "Unmount successful"
     breakpoint u "final umount"
     if [ "$ask" ]; then
-        vmsgN 1 "Press <Enter> to %s" "$(wq $cmd)"
+        vmsgN 1 "Press <Enter> to %s" "$(hq $cmd)"
         read x
     fi
-    vmsg -1 "Will now %s the system" "$(wq $cmd)"
+    vmsg -1 "Will now %s the system" "$(hq $cmd)"
     #sleep 1
     exec $cmd -f -n
 }
@@ -2128,9 +2129,9 @@ device_error() {
     local find_type=$1  type=$2  value=$3
     local valid_devs=$(echo $(most_block_devices) | sed "s/^/$white    /");
     if [ "$find_type" = 'persist' ]; then
-        _non_fatal "$(printf "Could not find device %s" "$dev_co $type")" "Valid devices": "$valid_devs"
+        _non_fatal "$(printf "Could not find device %s" "$(pqh $type)")" "Valid devices": "$valid_devs"
     else
-        _fatal "$(printf "Could not find device %s" "$dev_co $type")" "Valid devices": "$valid_devs"
+        _fatal "$(printf "Could not find device %s" "$(pqh $type)")" "Valid devices": "$valid_devs"
     fi
 }
 
@@ -2932,8 +2933,9 @@ mount_and_copy_rootfs() {
             msg "Enabled %s persistence" "$(cq dynamic root)"
         fi
     else
+
         STATIC_ROOT=
-        [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" 'root!'
+        [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" "$(pqh root!)"
     fi
 }
 
@@ -2992,7 +2994,7 @@ mount_persist_file() {
     local full=$(readlink -f $PERSIST_FULL_PATH/$file)
     if ! [ -f "$full" ]; then
         [ "$need" ] && non_fatal "Could not find file %s for required %s persistence" \
-            "$(fq $file)" "$type"
+            "$(pqh $file)" "$type"
         return 3
     fi
 
