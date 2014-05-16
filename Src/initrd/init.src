@@ -1786,8 +1786,8 @@ bogo_meter() {
     #echo "sleep: $sleep"
     while true; do
         for s in $(seq 1 $cnt); do
-            echo -n "$dot"
             usleep $sleep
+            echo -n "$dot"
         done
         echo
     done
