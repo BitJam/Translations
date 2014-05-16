@@ -1610,22 +1610,22 @@ should_fsck() {
 
 do_fsck() {
     local err ret output dev=$1  sdev=$(pq ${1##*/})
-    local dir=$SQFS_MP
 
-    system_mount $dir full tmp
+    local chroot_dir=$SQFS_MP
+    system_mount $chroot_dir full tmp
 
     # Need /etc/mtab symlink for tune2fs
-    mount --bind /live/etc $dir/etc
+    mount --bind /live/etc $chroot_dir/etc
 
     breakpoint f "Before fsck"
 
     vmsg 2 "fsck$white $dev"
-    output=$(chroot $dir /sbin/e2fsck -n $dev 2>&1)
+    output=$(chroot $chroot_dir /sbin/e2fsck -n $dev 2>&1)
     ret=$?
     echo "$output" | tee -a $MY_LOG
-    chroot $dir /sbin/tune2fs -C 1 $dev
+    chroot $chroot_dir /sbin/tune2fs -C 1 $dev
 
-    system_umount $dir
+    system_umount $chroot_dir
 
     breakpoint f "After fsck"
 
