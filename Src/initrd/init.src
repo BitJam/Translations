@@ -326,25 +326,26 @@ main_core() {
 #------------------------------------------------------------------------------
 
 system_mount() {
-    local dir=$1  dev=$2  tmp=$3
+    local dir=$1
+    shift
 
     mkdir -p $dir/proc $dir/sys $dir/dev
 
     mount -t proc   proc       $dir/proc
     mount -t sysfs  sys        $dir/sys
 
-    [ "$dev" ] && mount -t devtmpfs devtmpfs $dir/dev
+    for arg; do
+        case $arg in
+            dev)  mount -t devtmpfs devtmpfs $dir/dev  ;;
+            tmp)  mount_tmpfs $dir/tmp     10
+                  mount_tmpfs $dir/var/tmp 10          ;;
+            etc)  mount --bind /live/etc      $dir/etc ;;
+        esac
+    done
 
     mkdir -p $dir/dev/pts
     mount -t devpts devpts     $dir/dev/pts
 
-    [ "$tmp" ] || return
-
-    local tdir fdir
-    for tdir in tmp var/tmp; do
-        fdir=$dir/$tdir
-        [ -d $fdir ] && mount_tmpfs $fdir 10 $tdir
-    done
 }
 
 system_mountpoints() {
@@ -1612,10 +1613,7 @@ do_fsck() {
     local err ret output dev=$1  sdev=$(pq ${1##*/})
 
     local chroot_dir=$SQFS_MP
-    system_mount $chroot_dir full tmp
-
-    # Need /etc/mtab symlink for tune2fs
-    mount --bind /live/etc $chroot_dir/etc
+    system_mount $chroot_dir dev tmp etc
 
     breakpoint f "Before fsck"
 
@@ -2812,17 +2810,31 @@ persist_makefs() {
 
     mount -o remount,rw $SQFILE_DEV 2>/dev/null
 
-    breakpoint t "Before makefs"
+    breakpoint M "Before makefs chroot"
+
+    # Do the mkfs inside a chroot environment
+    local chroot_dir=$SQFS_MP
+    local tmp_dir=$chroot_dir/tmp/boot
+    local tmp_file=/tmp/boot/$SQFILE_PATH/$file
+
+    system_mount $chroot_dir dev tmp etc
+
+    mkdir -p $tmp_dir
+    mount --bind /live/boot-dev $tmp_dir
+
+    breakpoint m "before makefs"
 
     if dd if=/dev/zero of=$full_file bs=1M count=0 seek=$fs_size &>/dev/null; then
-        if ! time_cmd mkfs.$fs_type -q -F $full_file; then
-            err "The % command failed.  Deleting %s file" $(cqe mkfs.$fs_type) $(pqe $file)
+        if ! time_cmd chroot $chroot_dir /sbin/mkfs.$fs_type -q -F $tmp_file; then
+            err "The %s command failed.  Deleting %s file" $(cqe mkfs.$fs_type) $(pqe $file)
             rm -f $full_file
         fi
     else
-        err "The % command failed.  Deleting %s file" $(cqe dd) $(pqe $file)
+        err "The %s command failed.  Deleting %s file" $(cqe dd) $(pqe $file)
         rm -f $full_file
     fi
+
+    system_umount $chroot_dir
 
     test -e $full_file && msg "Created persistence file %s" $(fq $file)
 
@@ -2831,7 +2843,7 @@ persist_makefs() {
     set_path $LIVE_BIN
     umount $SQFS_MP
 
-    breakpoint t "After makefs umount"
+    breakpoint m "After makefs umount"
 }
 
 default_makefs_size() {
