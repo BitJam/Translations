@@ -336,10 +336,14 @@ system_mount() {
 
     for arg; do
         case $arg in
-            dev)  mount -t devtmpfs devtmpfs $dir/dev  ;;
+            dev)  mount -t devtmpfs devtmpfs $dir/dev     ;;
             tmp)  mount_tmpfs $dir/tmp     10
-                  mount_tmpfs $dir/var/tmp 10          ;;
-            etc)  mount --bind /live/etc      $dir/etc ;;
+                  mount_tmpfs $dir/var/tmp 10             ;;
+            etc)  log_cmd mount --bind /live/etc $dir/etc ;;
+         bind=*)  local src_dir=${arg#*=}
+                  local tmp_dir=$dir/tmp/bind
+                  mkdir -p $tmp_dir
+                  log_cmd mount --bind $src_dir $tmp_dir  ;;
         esac
     done
 
@@ -1615,17 +1619,36 @@ should_fsck() {
 }
 
 do_fsck() {
-    local err ret output dev=$1  sdev=$(pq ${1##*/})
+    local err ret bind  name=$1 dev=$2  sdev=$(pq ${2##*/}) opts=${3:--n} filefs=$4
+
+    # bind mount /tmp/boot to /live/boot-dev if checking rootfs or homefs
+    if [ "$filefs" ]; then
+        bind=bind=$(dirname $dev)
+        dev=/tmp/bind/$(basename $dev)
+    fi
+
+    # Use a fifo so we can get the return status and tee the output
+    local fifo=/tmp/pipe
+    rm -f $fifo
+    mkdir -p $(dirname $fifo)
+    mkfifo $fifo
+    tee -a $MY_LOG < $fifo &
+
+    msg "check %s filesystem" "$(pq $name)"
 
     local chroot_dir=$SQFS_MP
-    system_mount $chroot_dir dev tmp etc
+    system_mount $chroot_dir dev tmp etc $bind
 
     breakpoint f "Before fsck"
 
     vmsg 2 "fsck$white $dev"
-    output=$(chroot $chroot_dir /sbin/e2fsck -n $dev 2>&1)
+    #local output=$(chroot $chroot_dir /sbin/e2fsck $opts $dev 2>&1)
+    chroot $chroot_dir /sbin/e2fsck $opts $dev &> $fifo
     ret=$?
-    echo "$output" | tee -a $MY_LOG
+
+    #echo "$output" | tee -a $MY_LOG
+    rm -f $fifo
+
     chroot $chroot_dir /sbin/tune2fs -C 1 $dev
 
     system_umount $chroot_dir
@@ -1663,7 +1686,7 @@ fsck_boot_dev() {
 
     #breakpoint f "After mounting linuxfs before fsck"
 
-    do_fsck $dev
+    do_fsck "boot device" $dev -n
 
     # Always remount everything after fsck of boot device.  Don't want any
     # nasty surprises if we only do it when we need to.
@@ -2827,13 +2850,9 @@ persist_makefs() {
 
     # Do the mkfs inside a chroot environment
     local chroot_dir=$SQFS_MP
-    local tmp_dir=$chroot_dir/tmp/boot
-    local tmp_file=/tmp/boot/$SQFILE_PATH/$file
+    local tmp_file=/tmp/bind/$file
 
-    system_mount $chroot_dir dev tmp etc
-
-    mkdir -p $tmp_dir
-    mount --bind /live/boot-dev $tmp_dir
+    system_mount $chroot_dir dev tmp etc bind=$dir
 
     breakpoint m "before makefs"
 
@@ -2932,7 +2951,7 @@ _fsck_persist_dev() {
 
     should_fsck $dev persist || return 0
     umount $mp
-    do_fsck $dev
+    do_fsck "persist device" $dev -p
     try_mount $dev $mp && return 0
 
     non_fatal "Could not remount the persistence device"
@@ -3014,7 +3033,7 @@ mount_persist_file() {
     fi
 
     if should_fsck $full "$type file"; then
-        do_fsck $full || return 1
+        do_fsck "$file file" $full -p filefs || return 1
     fi
 
     heading "mount persistence file %s at %s" "$(fq $file)" "$(fq $mpnt)"
