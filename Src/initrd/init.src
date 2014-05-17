@@ -159,12 +159,12 @@ main_wrapper() {
             | sed -e "s/^/${yellow}Error: $red/" -e "s/$/$nc_co/" | tee -a $MY_LOG; done
     fi
 
-    write_log_files $MY_LOG $NEW_ROOT/$LOG_FILE
-
     # Nota Bene: when error log is enabled,  main_core() runs in a subshell
     # so it cannot affect our variables.
 
     NEW_ROOT=$AUFS_MP
+
+    write_log_files $MY_LOG $NEW_ROOT/$LOG_FILE
 
     breakpoint 9 "right before starting init"
 
