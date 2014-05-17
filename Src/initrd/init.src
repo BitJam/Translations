@@ -1688,7 +1688,6 @@ do_fsck() {
 
 fsck_boot_dev() {
     local dev=$1  mp=$2  sqfs_mp=$3  sq_file=$4  wrap_mp=$5
-    local name="boot device"
 
     local type=$(grep "^$dev " /proc/mounts | cut -d" " -f3)
 
@@ -1908,8 +1907,7 @@ heading() {
 
 # This is cheesy and fragile. We are using output in stderr to indicate
 # an error condition.  The upside is we can log the error messages.
-log_cmd()
-{
+log_cmd() {
     local err_msg=$("$@" &>/dev/null)
     if [ -n "$err_msg" ]; then
         vmsg 1 "$hi_co$*"
@@ -3043,6 +3041,7 @@ mount_persist_file() {
     [ "$PERSIST_FULL_PATH" ] || return 1
 
     local full=$(readlink -f $PERSIST_FULL_PATH/$file)
+
     if ! [ -f "$full" ]; then
         [ "$need" ] && non_fatal "Could not find file %s for required %s persistence" \
             "$(pqh $file)" "$type"
