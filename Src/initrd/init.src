@@ -1061,7 +1061,15 @@ find_files() {
 _find_files() {
     local find_type=$1 files=$2  mp_orig=$3  device_id=$4  retry_time=$5
 
-    local last_list
+    local last_list root_device partition partition_error
+
+    if [ -n "$device_id" -a -z "${device_id##name=*}" ]; then
+        partition=${device_id##name=}
+        partition=/dev/${partition##*/}
+        root_device=${partition%[0-9]}
+        root_device=${root_device%[0-9]}
+        msg "root_device:$root_device"
+    fi
 
     unset FOUND_DEV FOUND_MP
 
@@ -1166,8 +1174,17 @@ _find_files() {
         # specified
         #----------------------------------------------------------------------
         else
-            # FIXME: perhaps only do this for name= and uuid= not label=
             [ "$mounted_device" ] && return 40
+
+            # Give up early if the root device is found but the partition is not
+            # But wait a second in case there is a delay for the partitions to show
+            if [ "$partition_error" ]; then
+                warn "Found root device %s but not partition %s" "$(pqw $root_device)" "$(pqw $partition)"
+                sleep 1
+                final_try=true
+            fi
+
+            [ "$root_device" -a -e "$root_device" -a ! -e $partition ] && partition_error=true
 
             find_device "$find_type" "$try" "$final_try" "$device_id" || return $?
             if [ -z "$DEVICE_LIST" ]; then
