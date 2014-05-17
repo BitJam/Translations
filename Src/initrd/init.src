@@ -2922,10 +2922,11 @@ mount_persist_device() {
     FROM_TYPE=${FROM_PERSIST:-usb,hd}
 
     # FIXME: Does this always work? try without it now
-    [ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && PERSIST_RETRY=0
+    #[ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && PERSIST_RETRY=0
 
     find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
     local ret=$?
+    vmsg 8 "find_files() returned: $ret"
 
     if [ $ret -eq 0 ]; then
 
@@ -2940,8 +2941,8 @@ mount_persist_device() {
     else
 
         case $ret in
-            10|20|30) warn "Could not find persistence device"     ;;
-                   *) warn "Could not find any persistence files"  ;;
+           40) warn "Could not find any persistence files"  ;;
+            *) warn "Could not find persistence device"     ;;
         esac
 
         #. Could not enable required <type> persistence
