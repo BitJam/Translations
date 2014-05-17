@@ -2811,8 +2811,14 @@ persist_makefs() {
         default_cnt=$cnt
     fi
 
-    # FIXME
-    [ "$sizes" ] || return
+    if [ -z "$sizes" -o "$default_size" = -1 ]; then
+        if [ "$needed" ]; then
+            non_fatal "Not enough space on device to create %s file" "$(pqh $file)"
+        else
+            warn "Not enough space on device to create %s file" "$(pqw $file)"
+        fi
+        return
+    fi
 
    # Include all available in menu if it is appropriate
     local max=$(echo "$sizes" | sed 's/.* //')
