@@ -1779,7 +1779,7 @@ breakpoint() {
 
     echo "$green$tbar$nc_co"
     echo "$green==>$cyan limited shell @ breakpoint [$num_co$bp$cyan]$white $desc"
-    echo "$green    Use the$white exit$green command or hit$white Ctrl-d$green to continue"
+    echo "$green    Use the$white exit$green command or press$white Ctrl-d$green to continue"
 
     local bp_time_1=$(get_time)
     env PS1="${green}bp $red$bp$cyan>$nc_co " BP=$bp PATH=$LIVE_BIN:$PATH \
@@ -1949,7 +1949,7 @@ _error() {
 
     breakpoint e "On possibly fatal error"
 
-    local prompt="${green}Select ${yellow}$cmsg1 p$green or$yellow r$green then hit <enter>"
+    local prompt="${green}Select ${yellow}$cmsg1 p$green or$yellow r$green then press <enter>"
 
     local fmt="    $yellow%s$cyan =$white %s$nc_co\n"
     local reply
