@@ -1068,7 +1068,6 @@ _find_files() {
         partition=/dev/${partition##*/}
         root_device=${partition%[0-9]}
         root_device=${root_device%[0-9]}
-        msg "root_device:$root_device"
     fi
 
     unset FOUND_DEV FOUND_MP
