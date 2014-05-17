@@ -1244,6 +1244,11 @@ _find_files() {
                 mounted_device=true
                 mounted=true
                 mntpnt=$mp_orig
+
+            fi
+
+            if [ -n "$device_id" -a "$find_type" = persist ]; then
+                create_persist_files $mntpnt/$PERSIST_PATH
             fi
 
             for fname in $files; do
@@ -2735,31 +2740,32 @@ prepare_persistence() {
 }
 
 create_persist_files() {
+    local dir=$1
 
-    dir_has_param "$SQFILE_DIR" rw || return
+    dir_has_param "$dir" rw || return
 
     local make_homefs
     if [ "$NEED_ROOTFS" ]; then
 
         # Do we also make the homefs file?
         make_homefs=$WANT_HOMEFS
-        [ -e $SQFILE_DIR/rootfs -o -e $SQFILE_DIR/rootfs.new ] && make_homefs=
+        [ -e $dir/rootfs -o -e $dir/rootfs.new ] && make_homefs=
 
         # Default size for rootfs.new is size of rootfs
         local default_size rootfs_file=rootfs
         if [ "$WILL_REMASTER" ]; then
-            default_size=$(stat -c %s $SQFILE_DIR/rootfs 2>/dev/null)
+            default_size=$(stat -c %s $dir/rootfs 2>/dev/null)
             msg 'default size: %s' "$(nq $default_size)"
             [ "$default_size" ] && default_size=$((default_size/1024/1024))
             rootfs_file=rootfs.new
         fi
 
-        persist_makefs root $SQFILE_DIR $rootfs_file NEED_ROOTFS $default_size
+        persist_makefs root $dir $rootfs_file NEED_ROOTFS $default_size
 
     fi
 
     [ -n "$NEED_HOMEFS" -o -n "$make_homefs" ] \
-        && persist_makefs home $SQFILE_DIR homefs NEED_HOMEFS
+        && persist_makefs home $dir homefs NEED_HOMEFS
 }
 
 persist_makefs() {
@@ -2913,7 +2919,7 @@ mount_persist_device() {
     [ "$from_persist" ] || : ${PERSIST_ID:=name=$SQFILE_DEV}
 
     # Create persistence files if they don't already exist
-    [ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && create_persist_files
+    #[ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && create_persist_files $SQFILE_DIR
 
     heading "Mount persistence device (if needed)"
 
