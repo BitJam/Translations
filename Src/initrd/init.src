@@ -254,18 +254,21 @@ main_core() {
 
     fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP" "$SQFS_MP" "$SQFILE_FULL"  "$WRAP_FILE_MP"
 
+    ORIG_SQFILE_MP=$SQFILE_MP
+    ORIG_SQFILE_DIR=$SQFILE_PATH
+    ORIG_SQFILE_FULL=$ORIG_SQFILE_DIR/$SQFILE_NAME
+
     mount -o remount,rw $SQFILE_DEV 2>/dev/null
     dir_has_param "$SQFILE_MP" rw || REMASTERABLE=
-
-    [ "$REMASTERABLE" ] && do_remaster "$SQFILE_MP/$SQFILE_PATH"
-
-    ORIG_SQFILE_MP=$SQFILE_MP
+    [ "$REMASTERABLE" ] && do_remaster "$SQFILE_FULL"
 
     # Check md5 of files in directory containing linuxfs file
     # 'fromiso' causes us to check md5sums in two places
     [ "$CHECK_MD5" ] && check_md5 $SQFILE_DIR
 
-    [ "$TO_RAM" ] && copy_to_ram $TORAM_MP
+    [ "$TO_RAM" ] && copy_to_ram "$SQFILE_FULL" $TORAM_MP
+
+    #breakpoint 6 "after copy to ram"
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
 
@@ -1354,6 +1357,7 @@ find_linuxfs_file() {
 
         SQFILE_MP=$ISO_FILE_MP
         SQFILE_DEV=$FOUND_DEV   # Used for toram-eject
+        SQFILE_PATH=${SQFILE_FILE%/*}
 
     else
 
@@ -1374,7 +1378,7 @@ find_linuxfs_file() {
 
     fi
 
-    SQFILE_DIR=$SQFILE_MP/$SQFILE_PATH
+    SQFILE_DIR=$(dirname $SQFILE_FULL)
     DEFAULT_DIR=$SQFILE_DIR
 }
 
@@ -2479,7 +2483,7 @@ will_remaster() {
 #------------------------------------------------------------------------------
 do_remaster() {
     [ "$NO_REMASTER" ] && return 0
-    local sqfile_path=$1
+    local sqfile_path=$(dirname $1)
     local sqfile="$sqfile_path/$SQFILE_NAME"
     local old_file="$sqfile.old" new_file="$sqfile.new" bad_file="$sqfile.bad"
 
@@ -2554,13 +2558,13 @@ most_block_devices() { find /dev -type b | egrep -v "/ram|/loop|/fd" ; }
 # Copies the linuxfs file (and a few other files) to RAM
 #------------------------------------------------------------------------------
 copy_to_ram() {
-    local toram_mp=$1
+    local name=$(basename $1) toram_mp=$2
 
     if _copy_to_ram "$@"; then
 
         SQFILE_MP=$toram_mp
-        SQFILE_DIR=$toram_mp/$SQFILE_PATH
-        SQFILE_FULL=$toram_mp/$SQFILE_FILE
+        SQFILE_DIR=$toram_mp
+        SQFILE_FULL=$toram_mp/$name
         DEFAULT_DIR=$SQFILE_DIR
     else
         breakpoint ce "After toram copy file error"
@@ -2570,19 +2574,20 @@ copy_to_ram() {
 }
 
 _copy_to_ram() {
-    local toram_mp=$1  err_toram=$(cqe toram)
+    local from=$1 toram_mp=$2  err_toram=$(cqe toram)
+    local name=$(basename $from) dir=$(dirname $from)
 
-    heading "copy %s file to RAM" "$(fq $LINUXFS_NAME)"
-    local real_sq_file=$(readlink -f $SQFILE_FULL)
+    heading "copy %s file to RAM" "$(fq $name)"
+    local real_sq_file=$(readlink -f $from)
     local sq_size_k=$(du -sk $real_sq_file | cut -f 1)
 
     local format="%15s: %10d k"
     local format2="%s: %10d k"
-    vmsg 8 "$format" "$LINUXFS_NAME" $sq_size_k
+    vmsg 8 "$format" "$name" $sq_size_k
 
     local extra ex_full size_k
     for extra in $EXTRA_FILES; do
-        ex_full="$(readlink -f $SQFILE_DIR/$extra)"
+        ex_full="$(readlink -f $dir/$extra)"
         [ -e "$ex_full" ] || continue
         size_k="$(du -sk $ex_full | cut -f 1)"
         sq_size_k=$((sq_size_k + size_k))
@@ -2608,39 +2613,39 @@ _copy_to_ram() {
         return 2
     fi
 
-    local orig=$SQFILE_DIR
-    local dest="$toram_mp/$SQFILE_PATH"
+    local orig=$dir
+    local dest=$toram_mp
 
-    mkdir -p "$dest"
+    mkdir -p $dest
 
     vmsg 3 "Will copy files from %s to %s. Please be patient ..." \
         "$(dq $orig)" "$(dq $dest)"
 
     for extra in $EXTRA_FILES; do
-        local full=$(readlink -f $SQFILE_DIR/$extra)
+        local full=$(readlink -f $dir/$extra)
         [ -e "$full" ] && cp -a $full $dest
     done
-    [ -e $SQFILE_FULL.md5 ] && cp $SQFILE_FULL.md5 $dest
+    [ -e $from ] && cp $from.md5 $dest
 
-    if ! cp_file $orig $SQFILE_NAME $dest 2>&1; then
+    if ! cp_file $orig $name $dest 2>&1; then
         err "Copy failed.  Cannot do %s" $err_toram
         return 3
     fi
 
-    if ! [ -f "$dest/$SQFILE_NAME" ]; then
+    if ! [ -f "$dest/$name" ]; then
         err "The destination file is missing. The %s has failed." $err_toram
         return 4
     fi
 
     # Rely on file size in bytes to check for errors
     local orig_bytes=$(stat -c "%s" $real_sq_file)
-    local dest_bytes=$(stat -c "%s" $dest/$SQFILE_NAME)
+    local dest_bytes=$(stat -c "%s" $dest/$name)
 
     if [ "$orig_bytes" -ne "$dest_bytes" ]; then
         err "Copy was incomplete. The %s failed" $err_toram
         format="%s: ${num_co}%12d${m_co} bytes"
-        vmsg 1 "                 Size of original" $orig_bytes
-        vmsg 1 "                     Size of copy" $dest_bytes
+        vmsg 1 "      Size of original %12s" $orig_bytes
+        vmsg 1 "          Size of copy %12s" $dest_bytes
         vmsg_nc 1 "$(df -m | grep $toram_mp)"
         return 5
     fi
@@ -2723,6 +2728,7 @@ prepare_persistence() {
             static|s) ;;
 
             *)
+                # FIXME: should this be an non-fatal error?
                 warn
                 warn "Invalid %s values(s) %s"  $(cqw persist) "$(cqw $param)"
                 warn "Valid values: %s" "$(cqw auto home home! root root! static usb hd a h h! r r! s)" ;;
@@ -3307,8 +3313,8 @@ PERSIST_PATH="$PERSIST_PATH"
 REMASTERABLE="$REMASTERABLE"
 ROOTFS_MP="$ROOTFS_MP"
 RW_MODE="$RW_MODE"
-SQFILE_DIR="$ORIG_SQFILE_MP/$SQFILE_PATH"
-SQFILE_FULL="$ORIG_SQFILE_MP/$SQFILE_PATH/$SQFILE_NAME"
+SQFILE_DIR="$ORIG_SQFILE_DIR"
+SQFILE_FULL="$ORIG_SQFILE_FULL"
 SQFILE_NAME="$SQFILE_NAME"
 SQFILE_PATH="$SQFILE_PATH"
 SQFS_MP="$SQFS_MP"
@@ -3363,8 +3369,8 @@ PERSIST_UUID="$PERSIST_UUID"
 REMASTERABLE="$REMASTERABLE"
 ROOTFS_MP="$ROOTFS_MP"
 RW_MODE="$RW_MODE"
-SQFILE_DIR="$ORIG_SQFILE_MP/$SQFILE_PATH"
-SQFILE_FULL="$ORIG_SQFILE_MP/$SQFILE_PATH/$SQFILE_NAME"
+SQFILE_DIR="$ORIG_SQFILE_DIR"
+SQFILE_FULL="$ORIG_SQFILE_FULL"
 SQFILE_NAME="$SQFILE_NAME"
 SQFILE_PATH="$SQFILE_PATH"
 SQFS_MP="$SQFS_MP"
