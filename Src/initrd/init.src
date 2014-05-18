@@ -215,8 +215,9 @@ main_core() {
     show_integer_errors "$INTEGER_ERRORS"
 
     : ${SQFILE_FILE:=$DEFAULT_SQFILE}
-    : ${BOOT_DIR:=${SQFILE_FILE%/*}}
     : ${SQFILE_NAME:=${SQFILE_FILE##*/}}
+
+    [ -z "${SQFILE_FILE##*/*}" ] && : ${BOOT_DIR:=${SQFILE_FILE%/*}}
 
     [ "$SQFILE_EXT" ] && SQFILE_NAME="$SQFILE_NAME.$SQFILE_EXT"
     SQFILE_FILE="$BOOT_DIR/$SQFILE_NAME"
