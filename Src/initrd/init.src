@@ -176,7 +176,7 @@ main_wrapper() {
         vmsg 4 'Run %s instead of %s' $white$INIT_PROG$m_co $white/sbin/init$m_co
         vmsg 5 "${hi_co}%s" "Please exit shells normally to allow for a clean unmount"
 
-        system_mount $NEW_ROOT
+        chroot_mount dir=$NEW_ROOT
 
         CHROOT_BIN=$FINAL_DIR/bin
         chroot $NEW_ROOT $CHROOT_BIN/setsid $CHROOT_BIN/cttyhack $INIT_PROG
@@ -328,63 +328,6 @@ main_core() {
 #------------------------------------------------------------------------------
 # Getting started
 #------------------------------------------------------------------------------
-
-system_mount() {
-    local dir=$1
-    shift
-
-    mkdir -p $dir/proc $dir/sys $dir/dev
-
-    mount -t proc   proc       $dir/proc
-    mount -t sysfs  sys        $dir/sys
-
-    for arg; do
-        case $arg in
-            dev)  mount -t devtmpfs devtmpfs $dir/dev     ;;
-            tmp)  mount_tmpfs $dir/tmp     10
-                  mount_tmpfs $dir/var/tmp 10             ;;
-            etc)  log_cmd mount --bind /live/etc $dir/etc ;;
-         bind=*)  local src_dir=${arg#*=}
-                  local tmp_dir=$dir/tmp/bind
-                  mkdir -p $tmp_dir
-                  log_cmd mount --bind $src_dir $tmp_dir  ;;
-        esac
-    done
-
-    mkdir -p $dir/dev/pts
-    mount -t devpts devpts     $dir/dev/pts
-
-}
-
-system_mountpoints() {
-    local dev mp other ret=1 dir=$1
-
-    while read dev mp other; do
-        case $mp in $dir/*)
-            echo -n "$mp "
-            ret=0 ;;
-        esac
-    done << Read_Mounts
-$(tac /proc/mounts)
-Read_Mounts
-    return $ret
-}
-
-system_umount() {
-    local mp list i  dir=$1
-
-    for i in $(seq 1 4); do
-        list=$(system_mountpoints $dir) || return 0
-        vmsg 7 'umount %s' "$(pq $list)"
-        for mp in $list; do
-            umount $mp
-        done
-    done
-    list=$(system_mountpoints $dir) || return 0
-    err "Unable to unmount %s" "$(hq $list)"
-    return 1
-}
-
 
 make_nodes() {
     local dir=$1
@@ -1660,24 +1603,23 @@ do_fsck() {
     mkfifo $fifo
     tee -a $MY_LOG < $fifo &
 
-    msg "check %s filesystem" "$(pq $name)"
 
-    local chroot_dir=$SQFS_MP
-    system_mount $chroot_dir dev tmp etc $bind
+    chroot_mount dev tmp etc $bind
+
+    msg "check %s filesystem" "$(pq $name)"
 
     breakpoint f "Before fsck"
 
     vmsg 2 "fsck$white $dev"
-    #local output=$(chroot $chroot_dir /sbin/e2fsck $opts $dev 2>&1)
-    chroot $chroot_dir /sbin/e2fsck $opts $dev &> $fifo
+    my_chroot /sbin/e2fsck $opts $dev &> $fifo
     ret=$?
 
     #echo "$output" | tee -a $MY_LOG
     rm -f $fifo
 
-    chroot $chroot_dir /sbin/tune2fs -C 1 $dev
+    my_chroot /sbin/tune2fs -C 1 $dev
 
-    system_umount $chroot_dir
+    chroot_umount 
 
     breakpoint f "After fsck"
 
@@ -2874,15 +2816,14 @@ persist_makefs() {
     breakpoint M "Before makefs chroot"
 
     # Do the mkfs inside a chroot environment
-    local chroot_dir=$SQFS_MP
     local tmp_file=/tmp/bind/$file
 
-    system_mount $chroot_dir dev tmp etc bind=$dir
+    chroot_mount dev tmp etc bind=$dir
 
     breakpoint m "before makefs"
 
     if dd if=/dev/zero of=$full_file bs=1M count=0 seek=$fs_size &>/dev/null; then
-        if ! time_cmd chroot $chroot_dir /sbin/mkfs.$fs_type -q -F $tmp_file; then
+        if ! time_cmd my_chroot /sbin/mkfs.$fs_type -q -F $tmp_file; then
             err "The %s command failed.  Deleting %s file" $(cqe mkfs.$fs_type) $(pqe $file)
             rm -f $full_file
         fi
@@ -2891,7 +2832,7 @@ persist_makefs() {
         rm -f $full_file
     fi
 
-    system_umount $chroot_dir
+    chroot_umount 
 
     test -e $full_file && msg "Created persistence file %s" $(fq $file)
 
@@ -3267,6 +3208,70 @@ copy_xtra() {
     done
     msg
 }
+
+my_chroot() { chroot $CHROOT_DIR "$@" ;}
+
+chroot_mount() {
+    local dir=$SQFS_MP
+
+    if [ $# -gt 0 -a -n "$1" -a -z "${1##dir=*}" ]; then
+        dir=${1#dir=}
+        shift
+    fi
+
+    CHROOT_DIR=$dir
+
+    mkdir -p $dir/proc $dir/sys $dir/dev
+
+    mount -t proc   proc  $dir/proc
+    mount -t sysfs  sys   $dir/sys
+
+    for arg; do
+        case $arg in
+            dev)  mount -t devtmpfs devtmpfs $dir/dev     ;;
+            tmp)  mount_tmpfs $dir/tmp     10
+                  mount_tmpfs $dir/var/tmp 10             ;;
+            etc)  log_cmd mount --bind /live/etc $dir/etc ;;
+         bind=*)  local src_dir=${arg#*=}
+                  local tmp_dir=$dir/tmp/bind
+                  mkdir -p $tmp_dir
+                  log_cmd mount --bind $src_dir $tmp_dir  ;;
+        esac
+    done
+
+    mkdir -p $dir/dev/pts
+    mount -t devpts devpts $dir/dev/pts
+}
+
+mountpoints_under() {
+    local dev mp other ret=1 dir=$1
+
+    while read dev mp other; do
+        case $mp in $dir/*)
+            echo -n "$mp "
+            ret=0 ;;
+        esac
+    done << Read_Mounts
+$(tac /proc/mounts)
+Read_Mounts
+    return $ret
+}
+
+chroot_umount() {
+    local mp list i  dir=${1:-$CHROOT_DIR}
+
+    for i in $(seq 1 4); do
+        list=$(mountpoints_under $dir) || return 0
+        vmsg 7 'umount %s' "$(pq $list)"
+        for mp in $list; do
+            umount $mp
+        done
+    done
+    list=$(mountpoints_under $dir) || return 0
+    err "Unable to unmount %s" "$(hq $list)"
+    return 1
+}
+
 
 write_output_files() {
     local dir=$1  out_file=$1/init.out
