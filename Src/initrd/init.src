@@ -1914,18 +1914,10 @@ heading() {
     vmsg 3 "$@"
 }
 
-# This is cheesy and fragile. We are using output in stderr to indicate
-# an error condition.  The upside is we can log the error messages.
 log_cmd() {
-    local err_msg=$("$@" &>/dev/null)
-    if [ -n "$err_msg" ]; then
-        vmsg 1 "$hi_co$*"
-        err "$err_msg"
-        return 1
-    else
-        vmsg_nc 7 "$*"
-    fi
-    return 0
+    vmsg_nc 5 "$*"
+    "$@" >/dev/null
+    return $?
 }
 
 _error() {
