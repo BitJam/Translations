@@ -435,8 +435,8 @@ read_cmdline_params()
 #           cryptuuid=*|cuuid=*) CRYPT_UUID=$value  ;;
 #             cryptdev=*|cdev=*) CRYPT_DEV=$value   ;;
 
-                      fromiso=*) ISO_FILE=${value/#}                             ;;
-                        fromiso) FROM_ISO=true                                   ;;
+                iso=*|fromiso=*) ISO_FILE=${value/#}                             ;;
+                    iso|fromiso) FROM_ISO=true                                   ;;
 
                          from=*) FROM_TYPE=$value     ; ALWAYS_SCAN=true         ;;
 
