@@ -1619,7 +1619,7 @@ do_fsck() {
 
     my_chroot /sbin/tune2fs -C 1 $dev
 
-    chroot_umount 
+    chroot_umount
 
     breakpoint f "After fsck"
 
@@ -2832,7 +2832,7 @@ persist_makefs() {
         rm -f $full_file
     fi
 
-    chroot_umount 
+    chroot_umount
 
     test -e $full_file && msg "Created persistence file %s" $(fq $file)
 
