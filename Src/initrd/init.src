@@ -181,7 +181,7 @@ main_wrapper() {
         CHROOT_BIN=$FINAL_DIR/bin
         chroot $NEW_ROOT $CHROOT_BIN/setsid $CHROOT_BIN/cttyhack $INIT_PROG
 
-        breakpoint ch "after init= chroot"
+        breakpoint i "after init= chroot"
         safe_shutdown poweroff ask
 
     else
@@ -2501,7 +2501,7 @@ copy_to_ram() {
         SQFILE_FULL=$toram_mp/$name
         DEFAULT_DIR=$SQFILE_DIR
     else
-        breakpoint ce "After toram copy file error"
+        breakpoint c "After toram copy file error"
         mountpoint -q $toram_mp && log_cmd umount $toram_mp
         [ -d $toram_mp ]        && rmdir $toram_mp
     fi
