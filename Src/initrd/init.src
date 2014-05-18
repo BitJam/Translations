@@ -3084,9 +3084,11 @@ update_gfx_menu() {
 copy_homefs() {
     local pfull_path=$1
     [ -e "$pfull_path/homefs.new" ] || return
-    local tmp_dir=$LIVE_DIR/tmp
+    local tmp_dir=$AUFS_MP/tmp
 
     _copy_homefs "$pfull_path" $tmp_dir
+
+    chroot_umount
 
     # Always try to clean up even if it is not needed
     for dir in $tmp_dir/homefs*; do
@@ -3113,30 +3115,32 @@ _copy_homefs() {
         return
     fi
 
-    local rsync=$(which rsync 2>/dev/null)
+    chroot_mount dir=$AUFS_MP
 
-    if !  [ -x "$rsync" ]; then
+    local rsync=$(my_chroot which rsync 2>/dev/null)
+
+    if [ -z "$rsync" ]; then
         err "Could not find %s program to resize %s" rsync homefs
         return
     fi
 
-    local new_home=$tmp_dir/homefs.new
-    local cur_home=$tmp_dir/homefs
+    local new_home_mp=$tmp_dir/homefs.new
+    local cur_home_mp=$tmp_dir/homefs
 
-    log_cmd mkdir -p $cur_home $new_home
+    log_cmd mkdir -p $cur_home_mp $new_home_mp
 
-    if ! log_cmd mount -o loop $homefs_cur $cur_home; then
+    if ! log_cmd mount -o loop $homefs_cur $cur_home_mp; then
         err "Could not mount %s for copy" homefs
         return
     fi
 
-    if ! log_cmd mount -o loop $homefs_new $new_home; then
+    if ! log_cmd mount -o loop $homefs_new $new_home_mp; then
         err "Could not mount %s for copy" homefs.new
         return
     fi
 
-    local need_meg=$(used_space $cur_home)
-    local have_meg=$(all_space $new_home)
+    local need_meg=$(used_space $cur_home_mp)
+    local have_meg=$(all_space $new_home_mp)
     need_meg=$((need_meg + 10))
     vmsg 6 "Have %s Megabytes free.  Need %s" "$num_co $have_meg$m_co" "$num_co$need_meg$m_co"
     if [ "$need_meg" -gt "$have_meg" ]; then
@@ -3144,15 +3148,24 @@ _copy_homefs() {
         return
     fi
 
-    vmsg 6 "Copy home filesystem with the %s program.  Please be patient ..." "$rsync"
+    msg "Resize homefs. Copy contents of %s to %s" $(pq homefs) $(pq homefs.new)
 
-    if ! $rsync -aq --delete $cur_home/ $new_home/; then
+    msg "Copy home filesystem with the %s program.  Please be patient ..." "$rsync"
+
+    breakpoint r "Before resize homefs rsync"
+
+    time_cmd my_chroot $rsync -aq --delete /tmp/homefs/ /tmp/homefs.new/
+    local ret=$?
+
+    breakpoint r "After resize homefs rsync"
+
+    if [ "$ret" -ne 0 ]; then
         err "The %s program failed.  Will not resize %s" rsync homefs
         return
     fi
 
-    log_cmd umount $cur_home
-    log_cmd umount $new_home
+    log_cmd umount $cur_home_mp
+    log_cmd umount $new_home_mp
 
     log_cmd mv -f $homefs_cur $homefs_old
     log_cmd mv -f $homefs_new $homefs_cur
