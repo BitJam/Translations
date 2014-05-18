@@ -1857,7 +1857,7 @@ heading() {
 }
 
 log_cmd() {
-    vmsg_nc 5 "$*"
+    vmsg_nc 7 "$*"
     "$@" >/dev/null
     return $?
 }
