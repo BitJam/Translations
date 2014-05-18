@@ -3481,7 +3481,7 @@ prepare_switch_root() {
 
     # Work around a bug in fbcondecor_helper
     local fbsys=$live_dir/lib/splash/sys
-    mountpoint &>/dev/null $fbsys && umount $fbsys
+    mountpoint $fbsys &>/dev/null && umount $fbsys
 
     local dir old new
     for dir in bin config lib locale; do
