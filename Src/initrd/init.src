@@ -2318,8 +2318,9 @@ check_vid() {
         # Pass test and create new rootfs version file if rootfs is empty
         if ! ls $mp | egrep -q 'etc|bin|lib|var|usr'; then
             msg "Copy %s to empty %s" "$LINUXFS_NAME $VID_NAME" rootfs
+
             log_cmd mkdir -p "$mp$VID_DIR"      || return 1
-            log_cmd cp $SQFS_VID_FILE $vid_file || return 2
+            echo "=== $sqfs_vid" > $vid_file
             sync_fs
             return 0
 
