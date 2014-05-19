@@ -229,14 +229,19 @@ main_core() {
 
     breakpoint 3 "before looking for linuxfs file"
 
+    RW_MODE=ro
     find_linuxfs_file
+
+    mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
+
+    chroot_mount dev tmp etc
 
     RW_MODE=rw
     # FIXME: this makes debuggingg persist_makefs simpler
     #[ "$PERSIST_FILES" ] && mount -o remount,rw $SQFILE_DEV
     mount -o remount,rw $SQFILE_DEV
 
-    breakpoint 4 "after mounting boot device"
+    breakpoint 4 "after mounting boot device and linuxfs"
 
     prepare_persistence
 
@@ -250,7 +255,7 @@ main_core() {
 
     breakpoint 5 "after mounting persistence device"
 
-    fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP" "$SQFS_MP" "$SQFILE_FULL"  "$WRAP_FILE_MP"
+    fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP" 
 
     ORIG_SQFILE_MP=$SQFILE_MP
     ORIG_SQFILE_DIR=$SQFILE_PATH
@@ -266,23 +271,27 @@ main_core() {
 
     [ "$TO_RAM" ] && copy_to_ram "$SQFILE_FULL" $TORAM_MP
 
-    #breakpoint 6 "after copy to ram"
-
-    mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
-
-    breakpoint 6 "after mounting linuxfs file"
+    breakpoint 6 "after copy to ram"
 
     check_kernel_version $SQFS_MP
 
+    mount -o remount,rw $SQFILE_DEV 2>/dev/null
     fsck_persist_dev "$PERSIST_FILES" "$PERSIST_DEVICE" "$PERSIST_MP"
-
-    #dir_has_param "$PERSIST_MP" rw && mount -o remount,rw $PERSIST_MP
 
     [ "$WANT_ROOTFS" ] && remaster_rootfs "$PERSIST_MP" "$PERSIST_FULL_PATH"
 
     mount_aufs_ram "$AUFS_RAM_MP" "$MIN_AUFS_RAM" "$FREE_MEM"
 
     mount_and_copy_rootfs
+
+    [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
+
+    mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS" \
+        && msg "Enabled %s persistence" "$(cq home)"
+
+    [ "$GFX_SAVE" ] && update_gfx_menu "$GFX_SAVE_SCRIPT" "$GFX_SAVE" "$BOOT_MP/boot"
+
+    chroot_umount
 
     [ "$STATIC_ROOT" ] && log_cmd umount $AUFS_RAM_MP
 
@@ -293,14 +302,7 @@ main_core() {
     [ "$USE_MDEV" ] && mdev -s
     breakpoint 7 "after mounting aufs"
 
-    [ "$GFX_SAVE" ] && update_gfx_menu "$GFX_SAVE_SCRIPT" "$GFX_SAVE" "$BOOT_MP/boot"
-
     [ "$DELAYED_UMOUNT" ] && log_cmd umount $DELAYED_UMOUNT
-
-    [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
-
-    mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS" \
-        && msg "Enabled %s persistence" "$(cq home)"
 
     [ "$DO_XTRA"       ] && copy_xtra    $DEFAULT_DIR
     [ "$DO_AUTO_LOGIN" ] && auto_login   "$AUTO_LOGIN_PROG" "$AUTO_LOGIN_TERMS" "$NEW_ROOT"
@@ -1414,10 +1416,6 @@ mount_aufs() {
 
     mkdir -p $aufs_mp
 
-    # Need the cache file because we are using "mount" from the squashfs
-    local ld_cache=etc/ld.so.cache
-    cp $sqfs_mp/$ld_cache $LIVE_DIR/$ld_cache
-
     if [ -n "$PERSIST_ROOT" -a -n "$STATIC_ROOT" ]; then
         #. Enable <type> persistence
         msg "Enable %s persistence" "$(pq static rootfs)"
@@ -1436,18 +1434,9 @@ mount_aufs() {
     # Grab what we need from /etc before it gets nuked
     cp -a /etc/mtab $aufs_mp/etc/
 
-    # Temporary top level symlinks to simulate real system
-    # These will disappear when we switch_root
-    #link_top_dirs $aufs_mp $TOP_DIRS
-
-    # No longer needed, were using the aufs now via symlinks
-    rm -f $LIVE_DIR/$ld_cache
-
     # Always a good idea
     mkdir -p   $aufs_mp/tmp /var/tmp
     chmod 1777 $aufs_mp/tmp /var/tmp
-
-    #set_path "/usr/sbin:/usr/bin:/sbin:/bin:$LIVE_BIN"
 }
 
 link_top_dirs() {
@@ -1599,11 +1588,11 @@ should_fsck() {
 }
 
 do_fsck() {
-    local err ret bind  name=$1 dev=$2  sdev=$(pq ${2##*/}) opts=${3:--n} filefs=$4
+    local err ret  name=$1 dev=$2  sdev=$(pq ${2##*/}) opts=${3:--n} filefs=$4
 
     # bind mount /tmp/boot to /live/boot-dev if checking rootfs or homefs
     if [ "$filefs" ]; then
-        bind=bind=$(dirname $dev)
+        chroot_bind $(dirname $dev)
         dev=/tmp/bind/$(basename $dev)
     fi
 
@@ -1613,9 +1602,6 @@ do_fsck() {
     mkdir -p $(dirname $fifo)
     mkfifo $fifo
     tee -a $MY_LOG < $fifo &
-
-
-    chroot_mount dev tmp etc $bind
 
     msg "check %s filesystem" "$(pq $name)"
 
@@ -1629,8 +1615,6 @@ do_fsck() {
     rm -f $fifo
 
     my_chroot /sbin/tune2fs -C 1 $dev
-
-    chroot_umount
 
     breakpoint f "After fsck"
 
@@ -1649,33 +1633,20 @@ do_fsck() {
 }
 
 fsck_boot_dev() {
-    local dev=$1  mp=$2  sqfs_mp=$3  sq_file=$4  wrap_mp=$5
+    local dev=$1  mp=$2
 
     local type=$(grep "^$dev " /proc/mounts | cut -d" " -f3)
 
     if [ -n "$FORCE_FSCK" -a -n "${type##ext[234]}" ]; then
-        warn 'Cannot fsck %s device filesystem of type %s' "$(pqw boot)" "$(pqw $type)"
+        msg 'Cannot check %s device filesystem of type %s' "$(pq boot)" "$(pq $type)"
         return
     fi
 
     should_fsck $dev boot || return
 
-    mount_linuxfs "$sqfs_mp" "$sq_file" "$wrap_mp"
-
     #breakpoint f "After mounting linuxfs before fsck"
-
+    log_cmd mount -o remount,ro $dev
     do_fsck "boot device" $dev -n
-
-    # Always remount everything after fsck of boot device.  Don't want any
-    # nasty surprises if we only do it when we need to.
-    # We don't need no stinkin' reboots
-    set_path $LIVE_BIN
-    umount $sqfs_mp
-    mountpoint -q $wrap_mp && umount $wrap_mp
-    umount $mp
-
-    # Now mount the boot device again so no one knows we were here
-    try_mount $dev $mp || fatal "Could not remount boot device %s" "$(pqh $dev)"
 }
 
 #==============================================================================
@@ -2082,8 +2053,6 @@ select_device() {
     head_fmt="${hi_co}%3s %-5s %-8s %-8s %4s %-16s %s\n"
     #while read -r name size type label ; do
 
-    chroot_mount dev tmp etc
-
     while read -r line ; do
         name=$(echo "$line" | cut -d" " -f1)
         size=$(echo "$line" | cut -d" " -f2)
@@ -2122,8 +2091,6 @@ select_device() {
     done <<Data
     $(my_chroot /bin/lsblk -ro name,size,fstype,rm,ro,label,model)
 Data
-
-    chroot_umount
 
     line=$(printf "$format" "0)" "${bold_co}quit" "$m_co($(cq default))")
 
@@ -3003,7 +2970,6 @@ _persist_makefs() {
     vmsg 1 "Create %s file of type %s and size %s Meg" "$(fq $file)" "$(pq $fs_type)" "$(nq $fs_size)"
 
     # Now do the actual work
-    mount_linuxfs
 
     mount -o remount,rw $SQFILE_DEV 2>/dev/null
 
@@ -3012,8 +2978,7 @@ _persist_makefs() {
     # Do the mkfs inside a chroot environment
     local tmp_file=/tmp/bind/$file
 
-    mkdir -p $dir
-    chroot_mount dev tmp etc bind=$dir
+    chroot_bind $dir
 
     breakpoint m "before makefs"
 
@@ -3027,17 +2992,12 @@ _persist_makefs() {
         rm -f $full_file
     fi
 
-    chroot_umount
-
     test -e $full_file && msg "Created persistence file %s" $(fq $file)
 
     eval $needed_var=\$needed
     eval $wanted_var=\$wanted
 
-    set_path $LIVE_BIN
-    umount $SQFS_MP
-
-    breakpoint m "After makefs umount"
+    #breakpoint m "After makefs umount"
     return 0
 }
 
@@ -3085,7 +3045,12 @@ _fsck_persist_dev() {
     local dev=$1  mp=$2
 
     should_fsck $dev persist || return 0
-    umount $mp
+
+    if ! umount $mp &> /dev/null; then
+        vmsg 6 "Not checking persist filesystem because it can't be unmounted"
+        return 0
+    fi
+
     do_fsck "persist device" $dev -p
     try_mount $dev $mp && return 0
 
@@ -3254,11 +3219,7 @@ copy_homefs() {
 
     [ -e "$homefs.new" ] || return
 
-    chroot_mount dir=$AUFS_MP tmp
-
     _copy_homefs "$homefs" $AUFS_MP/tmp || mv $homefs.new $homefs.bad
-
-    chroot_umount
 
 }
 
@@ -3374,6 +3335,8 @@ copy_xtra() {
     msg
 }
 
+chroot_which() { chroot $CHROOT_DIR which $1; }
+
 my_chroot() {
     local prog=$1
     [ -z "${prog##/*}" ] || prog=$(env PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin \
@@ -3390,11 +3353,6 @@ my_chroot() {
 
 chroot_mount() {
     local dir=$SQFS_MP
-
-    if [ $# -gt 0 -a -n "$1" -a -z "${1##dir=*}" ]; then
-        dir=${1#dir=}
-        shift
-    fi
 
     CHROOT_DIR=$dir
 
@@ -3432,6 +3390,20 @@ mountpoints_under() {
 $(tac /proc/mounts)
 Read_Mounts
     return $ret
+}
+
+chroot_bind() {
+    local tmp_dir=$CHROOT_DIR/tmp/bind dir=$1
+
+    mkdir -p $tmp_dir $dir
+
+    umount $tmp_dir &>/dev/null
+    log_cmd mount --bind $dir $tmp_dir
+}
+
+chroot_unbind() {
+    local tmp_dir=$CHROOT_DIR/tmp/bind
+    umount $tmp_dir
 }
 
 chroot_umount() {
