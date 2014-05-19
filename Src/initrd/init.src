@@ -1207,7 +1207,7 @@ _find_files() {
 
                     #. <type> device filesystem: <filesystem-name>
                     vmsg 5 "%s device filesystem: %s" $find_type \
-                        "$(cq $(grep " $mntpnt " /proc/mounts | cut -d" " -f3,4))"
+                        "$(cq $(grep " $mntpnt " /proc/mounts | cut -d" " -f3))"
 
                     local short_dev=${dev##*/}
                     local model=$(cat /sys/block/${short_dev%%[0-9]*}/device/model 2>/dev/null)
