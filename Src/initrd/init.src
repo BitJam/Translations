@@ -1267,6 +1267,19 @@ device_uuid() {
     echo $UUID
 }
 
+device_label() {
+    local device=$1 LABEL TYPE UUID
+    eval $(blkid $device | sed 's/^[^:]*://')
+    echo $LABEL
+}
+
+device_fstype() {
+    local device=$1 LABEL TYPE UUID
+    eval $(blkid $device | sed 's/^[^:]*://')
+    echo $TYPE
+}
+
+
 find_linuxfs_file() {
 
     if [ -n "$ISO_FILE" -o -n "$FROM_ISO" ]; then
@@ -2118,6 +2131,48 @@ Data
     data="${data}0:quit\n"
 
     my_select_2 "$title" $var "0" "$data" "$display"
+}
+
+label_device() {
+    local dev=$1  new=$2
+    local type=$(device_fstype $dev)
+
+    local pre post
+    case $type in
+         ext[234]) pre="tune2fs -L"                  ; post="$dev"   ;;
+              xfs) pre="xfs_admin -L"                ; post="$dev"   ;;
+              jfs) pre="jfs_tune -L"                 ; post="$dev"   ;;
+             ntfs) pre="ntfslabel $dev"              ; post=""       ;;
+         vfat|dos) pre="dosfslabel $dev"             ; post=""       ;;
+            btrfs) pre="btrfs filesystem label $dev" ; post=""       ;;
+         reiserfs) pre="reiserfstune --label"        ; post="$dev"   ;;
+
+               "") warn "Could not determine filesystem on %s" $(pqw $dev)
+                   return 1                                          ;;
+
+                *) warn "Cannot label a %s filesystem" $(pqw $type)
+                   return 2                                          ;;
+    esac
+
+    local cmd=$(echo $pre | cut -d" " -f1)
+    local full=$(chroot_which $cmd 2>/dev/null)
+
+    if [ -z "$full" ]; then
+        warn "Don't have the tool to label a %s filesystem" $(pqw $type)
+        return 3
+    fi
+
+    local old=$(device_label $dev)
+
+    if [ "$old" ]; then
+        YES_no "Update label on %s from %s to %s" $(pq $dev) "$(pq "$old")" "$(pq "$new")" || return
+    else
+        warn "The device %s has no label" $(pqw $dev)
+        YES_no "Give %s the label %s" $(pq $dev) "$(pq "$new")" || return
+    fi
+
+    log_cmd my_chroot $pre "$new" $post
+
 }
 
 
@@ -3006,15 +3061,14 @@ select_persist_device() {
     warn
     msg "Please wait while existing parititions are found ..."
 
-    mount_linuxfs
-
     breakpoint x "before select device"
 
     select_device "Please select persistence device" device
     local ret=$?
-    log_cmd umount $SQFS_MP
 
     [ -z "$device" -o "$device" = "quit" ] && return 1
+
+    label_device $device "$AUTO_PERSIST"
     PERSIST_ID=name=$device
     return $ret
 }
