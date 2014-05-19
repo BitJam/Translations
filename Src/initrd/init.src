@@ -3323,7 +3323,19 @@ copy_xtra() {
     msg
 }
 
-my_chroot() { chroot $CHROOT_DIR "$@" ;}
+my_chroot() {
+    local prog=$1
+    [ -z "${prog##/*}" ] || prog=$(env PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin \
+        chroot $CHROOT_DIR which $prog 2>/dev/null)
+
+    if [ -z $prog ] || ! [ -x $CHROOT_DIR$prog ]; then
+        err "Program %s not found in chroot" "$(pqe $1)"
+        return 1
+    fi
+
+    shift
+    chroot $CHROOT_DIR $prog "$@"
+}
 
 chroot_mount() {
     local dir=$SQFS_MP
@@ -3373,6 +3385,8 @@ Read_Mounts
 
 chroot_umount() {
     local mp list i  dir=${1:-$CHROOT_DIR}
+
+    [ "$dir" ] || return
 
     for i in $(seq 1 4); do
         list=$(mountpoints_under $dir) || return 0
