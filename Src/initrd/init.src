@@ -1839,7 +1839,8 @@ heading() {
 
 log_cmd() {
     vmsg_nc 7 "$*"
-    "$@" >/dev/null
+    #"$@" >/dev/null
+    "$@"
     return $?
 }
 
