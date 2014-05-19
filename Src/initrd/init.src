@@ -71,8 +71,6 @@ MKFS_FREE_MARGIN=20
 
          MKFS_SIZES="65 100 150 200 250 375 500 750 1000 1500 2000 2500 3000 4000"
       MAX_MKFS_SIZE=${MKFS_SIZES##* }
-# Log msg statements to $LOG_FILE, First store them in $LOG variable.
-            LOG=""
 
 set_live_dirs() {
     local dir=$1
@@ -1811,7 +1809,6 @@ vmsg_old() {
 
     [ "$level" -le "$VERBOSE" ] && printf "$msg"
     echo -ne "$msg" >> $MY_LOG
-    #LOG="$LOG$msg"
 
     return 0
 }
@@ -3545,13 +3542,6 @@ write_log_files() {
     mkdir -p $(dirname $final_log)
     sed -r "s/$e\[[0-9;]+[mK]//g" $my_log > $final_log
     cp  $my_log $final_log.color
-}
-
-write_log_files_old() {
-    local file=$1 e=$(printf "\e")
-    mkdir -p $(dirname $LOG_FILE)
-    echo -e "$LOG" | sed -r "s/$e\[[0-9;]+[mK]//g" > $file
-    [ "$NO_COLOR" ] || echo -e "$LOG"              > $file.color
 }
 
 find_init_prog() {
