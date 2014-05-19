@@ -2064,6 +2064,66 @@ my_select_2() {
     done
 }
 
+select_device() {
+    local title=$1  var=$2
+    local cnt=1
+    local name size type label line model data display title
+    format="$green%3s $lt_cyan%-5s $magenta%-8s $lt_blue%-8s $yellow%-4s $white%-16s $lt_gray%s\n"
+    head_fmt="${hi_co}%3s %-5s %-8s %-8s %4s %-16s %s\n"
+    #while read -r name size type label ; do
+
+    chroot_mount dev tmp etc
+
+    while read -r line ; do
+        name=$(echo "$line" | cut -d" " -f1)
+        size=$(echo "$line" | cut -d" " -f2)
+        type=$(echo "$line" | cut -d" " -f3)
+        remove=$(echo "$line" | cut -d" " -f4)
+        reado=$(echo "$line" | cut -d" " -f5)
+        label=$(echo "$line" | cut -d" " -f6 | sed 's/\\x20/ /g')
+        model=$(echo "$line" | cut -d" " -f7 | sed 's/\\x20/ /g')
+
+        [ "$reado" = 1 ] && continue
+        rtype=
+        [ "$remove" = 1 ] && rtype=usb
+
+        if [ "$name" = NAME ]; then
+            title="$title\n$(printf "$head_fmt" "" $name $size $type TYPE $label MODEL)"
+            continue
+        fi
+
+        case $(stat -c %t /dev/$name) in
+            [38]) ;;
+               *) continue ;;
+        esac
+
+        [ "$model" ] && last_model=$model
+
+        case $type in
+            ""|udf|iso9660|swap|squashfs) continue
+        esac
+
+        local this_model=$last_model
+        [ "${#label}" -gt 16 ] && this_model=
+        data="${data}$cnt:$name\n"
+        line=$(printf "$format" "$cnt)" $name $size $type "$rtype" "$label" "$this_model")
+        display="${display}$line\n"
+        cnt=$((cnt + 1))
+    done <<Data
+    $(my_chroot /bin/lsblk -ro name,size,fstype,rm,ro,label,model)
+Data
+
+    chroot_umount
+
+    line=$(printf "$format" "0)" "${bold_co}quit" "$m_co($(cq default))")
+
+    display="${display}$line\n"
+    data="${data}0:quit\n"
+
+    my_select_2 "$title" $var "0" "$data" "$display"
+}
+
+
 sync_fs() {
     sync
 }
@@ -2767,28 +2827,41 @@ create_persist_files() {
         local default_size rootfs_file=rootfs
         if [ "$WILL_REMASTER" ]; then
             default_size=$(stat -c %s $dir/rootfs 2>/dev/null)
-            msg 'default size: %s' "$(nq $default_size)"
+            msg 'default size: %s Meg' "$(nq $default_size)"
             [ "$default_size" ] && default_size=$((default_size/1024/1024))
             rootfs_file=rootfs.new
         fi
 
-        persist_makefs root $dir $rootfs_file NEED_ROOTFS $default_size
+        persist_makefs root $mp $dir $rootfs_file NEED_ROOTFS $default_size
 
     fi
 
     [ -n "$NEED_HOMEFS" -o -n "$make_homefs" ] \
-        && persist_makefs home $dir homefs NEED_HOMEFS
+        && persist_makefs home $mp $dir homefs NEED_HOMEFS
 }
 
 persist_makefs() {
-    local type=$1  dir=$2  file=$3  needed_var=$4  orig_def_size=$5  full_file=$2/$3
+    local type=$1
+    _persist_makefs "$@" && return
 
-    [ -e $full_file ] && return
+    warn "Disable %s persistence" $(pqw $type)
+}
 
-    eval local needed=\$$needed_var
-    unset $needed_var
+_persist_makefs() {
+    local type=$1  mp=$2  dir=$3  file=$4  needed_var=$5  orig_def_size=$6  full_file=$3/$4
 
-    local free=$(free_space $dir)
+    local wanted_var=WANT${needed_var#NEED}
+
+    [ -e $full_file ] && return 0
+
+    warn
+    warn "%s persistence was requested but no %s file was found" $(pqw $type) $(pqw $file)
+    warn
+
+    eval local needed=\$$needed_var wanted=\$$wanted_var
+    unset $needed_var $wanted_var
+
+    local free=$(free_space $mp)
     local avail=$((free - MKFS_FREE_MARGIN))
 
     vmsg 6 '     Free space: %s Meg' $(nq $free)
@@ -2829,7 +2902,7 @@ persist_makefs() {
         else
             warn "Not enough space on device to create %s file" "$(pqw $file)"
         fi
-        return
+        return 1
     fi
 
    # Include all available in menu if it is appropriate
@@ -2849,7 +2922,7 @@ persist_makefs() {
         local title=$(printf "Create %s file, manually or automatically" $(fq $file))
         my_select "$title" create_mode 0 1 "create automatically" "create custom" "$quit"
         case $create_mode in
-                            "quit") return ;;
+                            "quit") return 1;;
             "create automatically") auto_mode=true;;
         esac
     fi
@@ -2864,7 +2937,7 @@ persist_makefs() {
         echo
         vmsg 1 "There is %s Meg available on the device" $(nq $avail)
         my_select "$title" fs_size 4 "$default_cnt" $sizes "$quit"
-        [ "$fs_size" = "quit" ] && return
+        [ "$fs_size" = "quit" ] && return 1
 
         vmsg 1 "Filesystem size %s Meg" $(nq $fs_size)
 
@@ -2872,7 +2945,7 @@ persist_makefs() {
 
         echo
         my_select "$title" fs_type 0 2 ext2 ext3 ext4 "$quit"
-        [ "$fs_type" = "quit" ] && return
+        [ "$fs_type" = "quit" ] && return 1
 
     fi
     vmsg 1 "Create %s file of type %s and size %s Meg" "$(fq $file)" "$(pq $fs_type)" "$(nq $fs_size)"
@@ -2907,11 +2980,13 @@ persist_makefs() {
     test -e $full_file && msg "Created persistence file %s" $(fq $file)
 
     eval $needed_var=\$needed
+    eval $wanted_var=\$wanted
 
     set_path $LIVE_BIN
     umount $SQFS_MP
 
     breakpoint m "After makefs umount"
+    return 0
 }
 
 default_makefs_size() {
@@ -2927,52 +3002,24 @@ default_makefs_size() {
     return 0
 }
 
-mount_persist_device() {
-    local persist_files=$1  from_persist=$2
+select_persist_device() {
+    local device label=$1
+    warn
+    warn "Could not find a partition with label %s" "$(pqw $label)"
+    warn
+    msg "Please wait while existing parititions are found ..."
 
-    [ "$persist_files" ] || return
+    mount_linuxfs
 
-    [ "$from_persist" ] || : ${PERSIST_ID:=name=$SQFILE_DEV}
+    breakpoint x "before select device"
 
-    # Create persistence files if they don't already exist
-    #[ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && create_persist_files $SQFILE_DIR
-
-    heading "Mount persistence device (if needed)"
-
-    ALWAYS_SCAN=$FROM_PERSIST
-    FROM_TYPE=${FROM_PERSIST:-usb,hd}
-
-    # FIXME: Does this always work? try without it now
-    #[ "$PERSIST_ID" = "name=$SQFILE_DEV" ] && PERSIST_RETRY=0
-
-    find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
+    select_device "Please select persistence device" device
     local ret=$?
-    vmsg 8 "find_files() returned: $ret"
+    log_cmd umount $SQFS_MP
 
-    if [ $ret -eq 0 ]; then
-
-        PERSIST_MP=$FOUND_MP
-        PERSIST_DEVICE=$FOUND_DEV
-        PERSIST_UUID=$(device_uuid $PERSIST_DEVICE)
-        vmsg 7 "       persist_mp: $PERSIST_MP"
-        vmsg 7 "   persist_device: $PERSIST_DEVICE"
-        vmsg 7 "     persist_uuid: $PERSIST_UUID"
-        PERSIST_FULL_PATH="$PERSIST_MP/$PERSIST_PATH"
-
-    else
-
-        case $ret in
-           40) warn "Could not find any persistence files"  ;;
-            *) warn "Could not find persistence device"     ;;
-        esac
-
-        #. Could not enable required <type> persistence
-        [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" $(pqh 'root!')
-        [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" $(pqh 'home!')
-
-        unset WANT_ROOTFS WANT_HOMEFS NEED_ROOTFS NEED_HOMEFS
-    fi
-
+    [ -z "$device" -o "$device" = "quit" ] && return 1
+    PERSIST_ID=name=$device
+    return $ret
 }
 
 fsck_persist_dev() {
