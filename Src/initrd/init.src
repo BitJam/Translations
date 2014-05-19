@@ -1793,7 +1793,7 @@ time_cmd() {
     local secs=$(get_seconds $((t1 - t0)))
     kill -9 $pid
     echo
-    vmsg 5 "command %s took %s seconds" "$(pq $*)" "$(nq $secs)"
+    vmsg 6 "command %s took %s seconds" "$(pq $*)" "$(nq $secs)"
     return $ret
 }
 
