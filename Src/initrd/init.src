@@ -3199,46 +3199,28 @@ update_gfx_menu() {
 }
 
 copy_homefs() {
-    local pfull_path=$1
-    [ -e "$pfull_path/homefs.new" ] || return
-    local tmp_dir=$AUFS_MP/tmp
+    local homefs=$1/homefs
 
-    _copy_homefs "$pfull_path" $tmp_dir
+    [ -e "$homefs.new" ] || return
+
+    chroot_mount dir=$AUFS_MP tmp
+
+    _copy_homefs "$homefs" $AUFS_MP/tmp || mv $homefs.new $homefs.bad
 
     chroot_umount
-
-    # Always try to clean up even if it is not needed
-    for dir in $tmp_dir/homefs*; do
-        msg "Clean %s" "$dir"
-        mountpoint $dir &>/dev/null && log_cmd umount $dir
-        [ -d "$dir" ] && rmdir $dir
-    done
 
 }
 
 _copy_homefs() {
-    local persist_full_path=$1  tmp_dir=$2
+    local homefs=$1  tmp_dir=$2
 
-    local homefs_new=$persist_full_path/homefs.new
-    local homefs_cur=$persist_full_path/homefs
-    local homefs_old=$persist_full_path/homefs.old
+    #msg "Look for %s" "$homefs.new"
+    #[ -e "$homefs.new" ] || return 0
 
-    msg "Look for %s" "$homefs_new"
-    [ -e "$homefs_new" ] || return
-
-    if ! [ -e "$homefs_cur" ]; then
+    if ! [ -e "$homefs" ]; then
         msg "No %s file found.  Rename %s to %s" homefs homefs.new homefs
-        mv $homefs_new $homefs_cur
-        return
-    fi
-
-    chroot_mount dir=$AUFS_MP
-
-    local rsync=$(my_chroot which rsync 2>/dev/null)
-
-    if [ -z "$rsync" ]; then
-        err "Could not find %s program to resize %s" rsync homefs
-        return
+        mv $homefs.new $homefs
+        return 0
     fi
 
     local new_home_mp=$tmp_dir/homefs.new
@@ -3246,14 +3228,14 @@ _copy_homefs() {
 
     log_cmd mkdir -p $cur_home_mp $new_home_mp
 
-    if ! log_cmd mount -o loop $homefs_cur $cur_home_mp; then
+    if ! log_cmd mount -o loop $homefs $cur_home_mp; then
         err "Could not mount %s for copy" homefs
-        return
+        return 1
     fi
 
-    if ! log_cmd mount -o loop $homefs_new $new_home_mp; then
+    if ! log_cmd mount -o loop $homefs.new $new_home_mp; then
         err "Could not mount %s for copy" homefs.new
-        return
+        return 1
     fi
 
     local need_meg=$(used_space $cur_home_mp)
@@ -3262,30 +3244,32 @@ _copy_homefs() {
     vmsg 6 "Have %s Megabytes free.  Need %s" "$num_co $have_meg$m_co" "$num_co$need_meg$m_co"
     if [ "$need_meg" -gt "$have_meg" ]; then
         err "Not enough room to copy home filesystem"
-        return
+        return 1
     fi
 
     msg "Resize homefs. Copy contents of %s to %s" $(pq homefs) $(pq homefs.new)
 
-    msg "Copy home filesystem with the %s program.  Please be patient ..." "$rsync"
+    msg "Copy home filesystem.  Please be patient ..."
 
     breakpoint r "Before resize homefs rsync"
 
-    time_cmd my_chroot $rsync -aq --delete /tmp/homefs/ /tmp/homefs.new/
+    time_cmd my_chroot rsync -aq --delete /tmp/homefs/ /tmp/homefs.new/
     local ret=$?
 
     breakpoint r "After resize homefs rsync"
 
     if [ "$ret" -ne 0 ]; then
-        err "The %s program failed.  Will not resize %s" rsync homefs
-        return
+        err "The %s program failed.  Will not resize %s" $(pqe rsync) $(pqe homefs)
+        return 1
     fi
 
     log_cmd umount $cur_home_mp
     log_cmd umount $new_home_mp
 
-    log_cmd mv -f $homefs_cur $homefs_old
-    log_cmd mv -f $homefs_new $homefs_cur
+    log_cmd mv -f $homefs $homefs.old
+    log_cmd mv -f $homefs.new $homefs
+
+    return 0
 }
 
 auto_login() {
