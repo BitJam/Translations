@@ -1195,7 +1195,7 @@ _find_files() {
             fi
 
             if [ -n "$device_id" -a "$find_type" = persist ]; then
-                create_persist_files $mntpnt/$PERSIST_PATH
+                create_persist_files $mntpnt $PERSIST_PATH
             fi
 
             for fname in $files; do
@@ -2680,10 +2680,67 @@ prepare_persistence() {
 
 }
 
-create_persist_files() {
-    local dir=$1
+mount_persist_device() {
+    local persist_files=$1  from_persist=$2
 
-    dir_has_param "$dir" rw || return
+    [ "$persist_files" ] || return
+
+    [ "$from_persist" ] || : ${PERSIST_ID:=name=$SQFILE_DEV}
+
+    heading "Mount persistence device (if needed)"
+
+    ALWAYS_SCAN=$FROM_PERSIST
+    FROM_TYPE=${FROM_PERSIST:-usb,hd}
+
+    find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
+    local ret=$?
+    vmsg 8 "find_files() returned: $ret"
+
+    # FIXME: select persist device here and then run find_files again.
+    if [ "$AUTO_PERSIST" -a $ret -ne 0 -a $ret -ne 40 ]; then
+        if select_persist_device "$AUTO_PERSIST"; then
+            msg "persist-files: $persist_files  id=$PERSIST_ID"
+            find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
+            ret=$?
+        else
+            warn "Disable persistence"
+            unset WANT_ROOTFS WANT_HOMEFS NEED_ROOTFS NEED_HOMEFS
+            return
+        fi
+
+    fi
+
+    if [ $ret -eq 0 ]; then
+
+        PERSIST_MP=$FOUND_MP
+        PERSIST_DEVICE=$FOUND_DEV
+        PERSIST_UUID=$(device_uuid $PERSIST_DEVICE)
+        vmsg 7 "       persist_mp: $PERSIST_MP"
+        vmsg 7 "   persist_device: $PERSIST_DEVICE"
+        vmsg 7 "     persist_uuid: $PERSIST_UUID"
+        PERSIST_FULL_PATH="$PERSIST_MP/$PERSIST_PATH"
+
+    else
+
+        case $ret in
+           40) warn "Could not find any persistence files"  ;;
+            *) warn "Could not find persistence device"     ;;
+        esac
+
+        #. Could not enable required <type> persistence
+        [ "$NEED_ROOTFS" ] && non_fatal "Could not enable required %s persistence" $(pqh 'root!')
+        [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" $(pqh 'home!')
+
+        unset WANT_ROOTFS WANT_HOMEFS NEED_ROOTFS NEED_HOMEFS
+    fi
+
+}
+
+create_persist_files() {
+    local mp=$1 path=$2 dir=$1/$2
+
+    mount -o remount,rw $mp 2>/dev/null
+    dir_has_param "$mp" rw || return
 
     local make_homefs
     if [ "$NEED_ROOTFS" ]; then
@@ -2818,6 +2875,7 @@ persist_makefs() {
     # Do the mkfs inside a chroot environment
     local tmp_file=/tmp/bind/$file
 
+    mkdir -p $dir
     chroot_mount dev tmp etc bind=$dir
 
     breakpoint m "before makefs"
