@@ -302,7 +302,7 @@ main_core() {
     [ "$USE_MDEV" ] && mdev -s
     breakpoint 7 "after mounting aufs"
 
-    [ "$DELAYED_UMOUNT" ] && log_cmd umount $DELAYED_UMOUNT
+    [ "$DELAYED_UMOUNT" ] && log_cmd umount -l $DELAYED_UMOUNT
 
     [ "$DO_XTRA"       ] && copy_xtra    $DEFAULT_DIR
     [ "$DO_AUTO_LOGIN" ] && auto_login   "$AUTO_LOGIN_PROG" "$AUTO_LOGIN_TERMS" "$NEW_ROOT"
