@@ -1852,7 +1852,7 @@ vmsg_nc() {
 heading() {
     vmsg 6 $head_co$tbar
     #. Begin [doing some sub process]
-    vmsgN 3 "$head_co%s " "Begin"
+    vmsgN 3 "$hi_co%s " "Begin"
     vmsg 3 "$@"
 }
 
@@ -2011,20 +2011,32 @@ my_select() {
     local title=$1  var=$2  width=${3:-0}  default=$4
     shift 4
 
-    local data display lab cnt=0
+    local data display lab cnt=0 dcnt
     for lab; do
         cnt=$((cnt+1))
-        data="${data}$cnt:$lab\n"
+        dcnt=$cnt
+
+        if [ "$lab" = "quit" ]; then
+            dcnt=0
+            lab=$bold_co$lab$nc_co
+        fi
+
+        data="${data}$dcnt:$lab\n"
         [ $cnt = "$default" ] && lab=$(printf "%${width}s (%s)" "$lab" "$(cq "default")")
-        display="${display}$(printf "%2d) %${width}s" $cnt "$lab")\n"
+        display="${display}$(printf "%2d) %${width}s" $dcnt "$lab")\n"
     done
 
+    my_select_2 "$title" $var "$default" "$data" "$display"
+}
+
+my_select_2() {
+    local title=$1  var=$2  default=$3  data=$4  display=$5
     local def_prompt=$(printf "Press <%s> for the default selection" "$(cq "enter")")
 
     local val input err_msg
     while [ -z "$val" ]; do
 
-        printf "$bold_co%s$nc_co\n" "$title"
+        echo -e "$hi_co$title$nc_co"
         printf "$display" | sed -r -e "s/(^|\t)( ?[0-9]+)(\))/\t$green\2$white\3$cyan/g" -e "s/$/$nc_co/"
         [ "$err_msg" ] && printf "$err_co%s$nc_co\n" "$err_msg"
         [ "$default" ] && printf "$m_co%s$nc_co\n" "$def_prompt"
@@ -2618,8 +2630,10 @@ prepare_persistence() {
         # persist label if persist device was not explicitly given
         if [ -z "$REMASTERABLE" -a -n "$PERSIST" ]; then
             AUTO_PERSIST="$DISTRO-Persist"
-            warn "Persistence requested on a read-only boot device"
+            warn
+            warn "Persistence was requested on a read-only boot device"
             warn "Will search for a persistence device with the label %s" "$(pqw $AUTO_PERSIST)"
+            warn
             PERSIST_ID=label="$AUTO_PERSIST"
         fi
     fi
@@ -2786,7 +2800,7 @@ persist_makefs() {
 
     local default_size=$(default_makefs_size $avail ${file}_SIZE_PARAM $orig_def_size)
 
-    vmsg 6 'Default size: %s' $(nq $default_size)
+    vmsg 6 'Default size: %s Meg' $(nq $default_size)
 
     : ${default_size:=-1}
 
@@ -2825,10 +2839,8 @@ persist_makefs() {
     local fs_type fs_size auto_mode create_mode quit=$(printf "quit")
     #[ "$needed" ] && quit=
 
-    vmsg 1 "%s persistence was requested but no %s file was found" $(cq $type) $(fq $file)
-
     heading "create %s persistence file" "$(fq $file)"
-    vmsg 1 "Default size: %s  Default type: %s" $(nq $default_size) $(pq ext3)
+    vmsg 1 "Default size: %s Meg.  Default type: %s" $(nq $default_size) $(pq ext3)
     warn "Warning: this operation can take a few minutes"
 
     if [ "$AUTO_MAKE_FS" ]; then
