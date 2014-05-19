@@ -1547,8 +1547,8 @@ should_fsck() {
 
     if [ "$SB_MAGIC" != 61267 ]; then
         [ "$FORCE_FSCK" ] \
-            && warn 'Cannot check %s filesystem on device %s.  Not an ext2/3/4 filesystem.' \
-                "$(pqw $name)" "$(pqw $sdev)"
+            && msg 'Cannot check %s filesystem on device %s.  Not an ext2/3/4 filesystem.' \
+                "$(pq $name)" "$(pq $sdev)"
         return 1
     fi
 
