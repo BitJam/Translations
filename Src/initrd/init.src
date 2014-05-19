@@ -2105,7 +2105,7 @@ select_device() {
 
         local this_model=$last_model
         [ "${#label}" -gt 16 ] && this_model=
-        data="${data}$cnt:$name\n"
+        data="${data}$cnt:/dev/$name\n"
         line=$(printf "$format" "$cnt)" $name $size $type "$rtype" "$label" "$this_model")
         display="${display}$line\n"
         cnt=$((cnt + 1))
