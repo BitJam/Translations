@@ -177,7 +177,7 @@ main_wrapper() {
         vmsg 4 'Run %s instead of %s' $white$INIT_PROG$m_co $white/sbin/init$m_co
         vmsg 5 "${hi_co}%s" "Please exit shells normally to allow for a clean unmount"
 
-        chroot_mount dir=$NEW_ROOT
+        #chroot_mount dir=$NEW_ROOT
 
         CHROOT_BIN=$FINAL_DIR/bin
         chroot $NEW_ROOT $CHROOT_BIN/setsid $CHROOT_BIN/cttyhack $INIT_PROG
