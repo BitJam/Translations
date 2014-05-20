@@ -65,6 +65,9 @@
           USE_MDEV=
            DO_LOAD=
 
+  LIVE_X64_LD_PATH="/lib:/lib/x86_64-linux-gnu:/usr/lib"
+  LIVE_386_LD_PATH="/lib:/lib/i386-linux-gnu:/usr/lib"
+
 MKFS_FREE_MARGIN=20
   rootfs_SIZE_PARAM="min_size=64 mid_size=400 max_size=1000 factor=50"
   homefs_SIZE_PARAM="min_size=64 mid_size=400 max_size=1000 factor=25"
@@ -234,7 +237,7 @@ main_core() {
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
 
-    chroot_mount dev tmp etc
+    prep_ld_path
 
     RW_MODE=rw
     # FIXME: this makes debuggingg persist_makefs simpler
@@ -286,12 +289,7 @@ main_core() {
 
     [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
 
-    mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS" \
-        && msg "Enabled %s persistence" "$(cq home)"
-
     [ "$GFX_SAVE" ] && update_gfx_menu "$GFX_SAVE_SCRIPT" "$GFX_SAVE" "$BOOT_MP/boot"
-
-    chroot_umount
 
     [ "$STATIC_ROOT" ] && log_cmd umount $AUFS_RAM_MP
 
@@ -301,6 +299,8 @@ main_core() {
 
     [ "$USE_MDEV" ] && mdev -s
     breakpoint 7 "after mounting aufs"
+    mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS" \
+        && msg "Enabled %s persistence" "$(cq home)"
 
     [ "$DELAYED_UMOUNT" ] && log_cmd umount -l $DELAYED_UMOUNT
 
@@ -1590,12 +1590,6 @@ should_fsck() {
 do_fsck() {
     local err ret  name=$1 dev=$2  sdev=$(pq ${2##*/}) opts=${3:--n} filefs=$4
 
-    # bind mount /tmp/boot to /live/boot-dev if checking rootfs or homefs
-    if [ "$filefs" ]; then
-        chroot_bind $(dirname $dev)
-        dev=/tmp/bind/$(basename $dev)
-    fi
-
     # Use a fifo so we can get the return status and tee the output
     local fifo=/tmp/pipe
     rm -f $fifo
@@ -1608,13 +1602,13 @@ do_fsck() {
     breakpoint f "Before fsck"
 
     vmsg 2 "fsck$white $dev"
-    my_chroot /sbin/e2fsck $opts $dev &> $fifo
+    ld_path /sbin/e2fsck $opts $dev &> $fifo
     ret=$?
 
     #echo "$output" | tee -a $MY_LOG
     rm -f $fifo
 
-    my_chroot /sbin/tune2fs -C 1 $dev
+    ld_path /sbin/tune2fs -C 1 $dev
 
     breakpoint f "After fsck"
 
@@ -2090,7 +2084,7 @@ select_device() {
         display="${display}$line\n"
         cnt=$((cnt + 1))
     done <<Data
-    $(my_chroot /bin/lsblk -ro name,size,fstype,rm,ro,label,model)
+    $(ld_path /bin/lsblk -ro name,size,fstype,rm,ro,label,model)
 Data
 
     line=$(printf "$format" "0)" "${bold_co}quit" "$m_co($(cq default))")
@@ -2123,7 +2117,7 @@ label_device() {
     esac
 
     local cmd=$(echo $pre | cut -d" " -f1)
-    local full=$(chroot_which $cmd 2>/dev/null)
+    local full=$(ld_path which $cmd 2>/dev/null)
 
     if [ -z "$full" ]; then
         warn "Don't have the tool to label a %s filesystem" $(pqw $type)
@@ -2139,7 +2133,7 @@ label_device() {
         YES_no "Give %s the label %s" $(pq $dev) "$(pq "$new")" || return
     fi
 
-    log_cmd my_chroot $pre "$new" $post
+    log_cmd ld_path $pre "$new" $post
 
 }
 
@@ -2894,7 +2888,7 @@ _persist_makefs() {
 
     local default_size=$(default_makefs_size $avail ${file}_SIZE_PARAM $orig_def_size)
 
-    vmsg 6 'Default size: %s Meg' $(nq $default_size)
+    vmsg 6 '    Default size: %s Meg' $(nq $default_size)
 
     : ${default_size:=-1}
 
@@ -2975,17 +2969,10 @@ _persist_makefs() {
 
     mount -o remount,rw $SQFILE_DEV 2>/dev/null
 
-    breakpoint M "Before makefs chroot"
-
-    # Do the mkfs inside a chroot environment
-    local tmp_file=/tmp/bind/$file
-
-    chroot_bind $dir
-
     breakpoint m "before makefs"
 
     if dd if=/dev/zero of=$full_file bs=1M count=0 seek=$fs_size &>/dev/null; then
-        if ! time_cmd my_chroot /sbin/mkfs.$fs_type -q -F $tmp_file; then
+        if ! time_cmd ld_path /sbin/mkfs.$fs_type -q -F $full_file; then
             err "The %s command failed.  Deleting %s file" $(cqe mkfs.$fs_type) $(pqe $file)
             rm -f $full_file
         fi
@@ -3221,12 +3208,12 @@ copy_homefs() {
 
     [ -e "$homefs.new" ] || return
 
-    _copy_homefs "$homefs" $AUFS_MP/tmp || mv $homefs.new $homefs.bad
+    _copy_homefs "$homefs"  || mv $homefs.new $homefs.bad
 
 }
 
 _copy_homefs() {
-    local homefs=$1  tmp_dir=$2
+    local homefs=$1
 
     #msg "Look for %s" "$homefs.new"
     #[ -e "$homefs.new" ] || return 0
@@ -3237,8 +3224,8 @@ _copy_homefs() {
         return 0
     fi
 
-    local new_home_mp=$tmp_dir/homefs.new
-    local cur_home_mp=$tmp_dir/homefs
+    local new_home_mp=/tmp/homefs.new
+    local cur_home_mp=/tmp/homefs
 
     log_cmd mkdir -p $cur_home_mp $new_home_mp
 
@@ -3267,7 +3254,7 @@ _copy_homefs() {
 
     breakpoint r "Before resize homefs rsync"
 
-    time_cmd my_chroot rsync -aq --delete /tmp/homefs/ /tmp/homefs.new/
+    time_cmd ld_path rsync -aq --delete /tmp/homefs/ /tmp/homefs.new/
     local ret=$?
 
     breakpoint r "After resize homefs rsync"
@@ -3337,47 +3324,42 @@ copy_xtra() {
     msg
 }
 
-chroot_which() { chroot $CHROOT_DIR which $1; }
+ld_path() {
+    local xdir found prog=$1
 
-my_chroot() {
-    local prog=$1
-    [ -z "${prog##/*}" ] || prog=$(env PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/bin \
-        chroot $CHROOT_DIR which $prog 2>/dev/null)
+    if [ -n "${prog##/*}" ]; then
+        for xdir in /sbin bin /usr/sbin /usr/bin /usr/local/bin; do
+            [ -x $LINUXFS_DIR$xdir/$prog ] || continue
+            prog=$xdir/$prog
+            found=true
+            break
+        done
 
-    if [ -z $prog ] || ! [ -x $CHROOT_DIR$prog ]; then
-        err "Program %s not found in chroot" "$(pqe $1)"
-        return 1
+        if [ -z "$found" ]; then
+            echo "${err_co}Program %s not found in pseudo-chroot" "$(pqe $1)"  >&2
+            return 1
+        fi
     fi
 
     shift
-    chroot $CHROOT_DIR $prog "$@"
+    LD_LIBRARY_PATH=$LD_PATH $LINUXFS_DIR$prog "$@"
 }
 
-chroot_mount() {
-    local dir=$SQFS_MP
+prep_ld_path() {
+    local ld_path arch=$(uname -m)  dir=${1:-$SQFS_MP}
 
-    CHROOT_DIR=$dir
+    LINUXFS_DIR=$dir
 
-    mkdir -p $dir/proc $dir/sys $dir/dev
+    case $arch in
+          x86_64) ld_path=$LIVE_X64_LD_PATH ;;
+        i[3-8]86) ld_path=$LIVE_386_LD_PATH ;;
+               *) warn 'unknown architecture %s. Assuming %s' $(pqw $arch) $(pqw i686)
+                  ld_path=$LIVE_386_LD_PATH;;
+    esac
 
-    mount -t proc   proc  $dir/proc
-    mount -t sysfs  sys   $dir/sys
+    LD_PATH=$(echo $ld_path | sed -r "s=(^|:)=\\1$dir=g")
 
-    for arg; do
-        case $arg in
-            dev)  mount -t devtmpfs devtmpfs $dir/dev     ;;
-            tmp)  mount_tmpfs $dir/tmp     10
-                  mount_tmpfs $dir/var/tmp 10             ;;
-            etc)  log_cmd mount --bind /live/etc $dir/etc ;;
-         bind=*)  local src_dir=${arg#*=}
-                  local tmp_dir=$dir/tmp/bind
-                  mkdir -p $tmp_dir
-                  log_cmd mount --bind $src_dir $tmp_dir  ;;
-        esac
-    done
-
-    mkdir -p $dir/dev/pts
-    mount -t devpts devpts $dir/dev/pts
+    vmsg 5 "LD_PATH: $LD_PATH"
 }
 
 mountpoints_under() {
@@ -3394,22 +3376,8 @@ Read_Mounts
     return $ret
 }
 
-chroot_bind() {
-    local tmp_dir=$CHROOT_DIR/tmp/bind dir=$1
-
-    mkdir -p $tmp_dir $dir
-
-    umount $tmp_dir &>/dev/null
-    log_cmd mount --bind $dir $tmp_dir
-}
-
-chroot_unbind() {
-    local tmp_dir=$CHROOT_DIR/tmp/bind
-    umount $tmp_dir
-}
-
 chroot_umount() {
-    local mp list i  dir=${1:-$CHROOT_DIR}
+    local mp list i  dir=${1:-$LINUXFS_DIR}
 
     [ "$dir" ] || return
 
