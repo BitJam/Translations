@@ -1561,7 +1561,6 @@ do_fsck() {
     ld_path /sbin/e2fsck $opts $dev &> $fifo
     ret=$?
 
-    #echo "$output" | tee -a $MY_LOG
     rm -f $fifo
 
     ld_path /sbin/tune2fs -C 1 $dev
@@ -1594,7 +1593,6 @@ fsck_boot_dev() {
 
     should_fsck $dev boot || return
 
-    #breakpoint f "After mounting linuxfs before fsck"
     log_cmd mount -o remount,ro $dev
     do_fsck "boot device" $dev -n
 }
@@ -1701,11 +1699,8 @@ get_seconds() {
 
 bogo_meter() {
     local width=${1:-$SCREEN_WIDTH} delay=60  dot=.
-    #echo "width: $width"
     local cnt=$(( width * 80 / 100 ))
-    #echo "  cnt: $cnt"
     local sleep=$(( 1000000 * delay / cnt ))
-    #echo "sleep: $sleep"
     while true; do
         for s in $(seq 1 $cnt); do
             usleep $sleep
@@ -1899,7 +1894,6 @@ safe_shutdown() {
     local cmd=$1  ask=$2
 
     set_path $LIVE_BIN
-    #exec < /dev/console > /dev/console
 
     final_umount && vmsg 1 "Unmount successful"
     breakpoint u "final umount"
@@ -1908,7 +1902,6 @@ safe_shutdown() {
         read x
     fi
     vmsg -1 "Will now %s the system" "$(hq $cmd)"
-    #sleep 1
     exec $cmd -f -n
 }
 
@@ -2007,7 +2000,6 @@ select_device() {
     local name size type label line model data display title
     format="$green%3s $lt_cyan%-5s $magenta%-8s $lt_blue%-8s $yellow%-4s $white%-16s $lt_gray%s\n"
     head_fmt="${hi_co}%3s %-5s %-8s %-8s %4s %-16s %s\n"
-    #while read -r name size type label ; do
 
     while read -r line ; do
         name=$(echo "$line" | cut -d" " -f1)
@@ -2131,7 +2123,6 @@ cleanse_dev() {
 }
 
 general_device_error() {
-    #msg "gde($*)"
     case $2 in
         uuid|label) label_error  "$@" ;;
               name) device_error "$@" ;;
@@ -2919,7 +2910,6 @@ _persist_makefs() {
     eval $needed_var=\$needed
     eval $wanted_var=\$wanted
 
-    #breakpoint m "After makefs umount"
     return 0
 }
 
@@ -3128,8 +3118,6 @@ update_gfx_menu() {
         fi
     fi
 
-    #msg "in directory %s" "$white$dir"
-
     env VERBOSE=$VERBOSE NO_COLOR=$NO_COLOR LOW_COLOR=$LOW_COLOR \
         GFX_LOG_FILE=$LOG_DIR/gfxsave.log $script $dir $param
 
@@ -3147,9 +3135,6 @@ copy_homefs() {
 
 _copy_homefs() {
     local homefs=$1
-
-    #msg "Look for %s" "$homefs.new"
-    #[ -e "$homefs.new" ] || return 0
 
     if ! [ -e "$homefs" ]; then
         msg "No %s file found.  Rename %s to %s" homefs homefs.new homefs
@@ -3511,8 +3496,6 @@ prepare_switch_root() {
     echo 4000000 > /proc/sys/kernel/pid_max 2>/dev/null
 
     mount_tmpfs $new_live 10 $live_dir 755
-
-    #cp /mdev.trace /init $new_live/ 2>/dev/null
 
     local mp new
     for mp in $live_dir/*; do
