@@ -258,7 +258,7 @@ main_core() {
 
     breakpoint 5 "after mounting persistence device"
 
-    fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP" 
+    fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP"
 
     ORIG_SQFILE_MP=$SQFILE_MP
     ORIG_SQFILE_DIR=$SQFILE_PATH
@@ -3392,7 +3392,6 @@ chroot_umount() {
     err "Unable to unmount %s" "$(hq $list)"
     return 1
 }
-
 
 write_output_files() {
     local dir=$1  out_file=$1/init.out
