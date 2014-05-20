@@ -2879,8 +2879,8 @@ _persist_makefs() {
     local free=$(free_space $mp)
     local avail=$((free - MKFS_FREE_MARGIN))
 
-    vmsg 6 '     Free space: %s Meg' $(nq $free)
-    vmsg 6 'Available space: %s Meg' $(nq $avail)
+    vmsg 6 '      Free space: %s Meg' $(nq $free)
+    vmsg 6 ' Available space: %s Meg' $(nq $avail)
 
     [ "$orig_def_size" ] && [ $orig_def_size -gt $avail ] \
         && warn "Not enough room on Live device to create %s file of size %s Meg" \
