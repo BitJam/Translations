@@ -228,8 +228,6 @@ main_core() {
     # will always work
     #[ "$NO_EHCI" ] && disable_hcd ehci
 
-    #[ "$CRYPT_DEV" -o "$CRYPT_LABEL" -o "$CRYPT_UUID" ] && setup_crypt
-
     breakpoint 3 "before looking for linuxfs file"
 
     RW_MODE=ro
@@ -373,10 +371,6 @@ read_cmdline_params()
             persistdev=*|pdev=*) PERSIST_ID=name=$value   ;  SET_PERSIST=true    ;;
 
  persistretry=*|pretry=*|ptry=*) valid_int PERSIST_RETRY $param                  ;;
-
-#  cryptlabel=*|clabel=*|clab=*) CRYPT_LABEL=$value ;;
-#           cryptuuid=*|cuuid=*) CRYPT_UUID=$value  ;;
-#             cryptdev=*|cdev=*) CRYPT_DEV=$value   ;;
 
                 iso=*|fromiso=*) ISO_FILE=${value/#}                             ;;
                     iso|fromiso) FROM_ISO=true                                   ;;
@@ -847,38 +841,6 @@ load_module() {
     [ "$msg" ] || return 0
     ERR_MODULES="$ERR_MODULES $name"
     return 1
-}
-
-setup_crypt() {
-    msg 'Look for encrypted device ...'
-
-    # FIXME: convert retry to final_try or retry_time
-    find_crypt_device "$RETRY_TIME" || fatal 'Could not find encrypted device.'
-
-    # No labels on encrypted partitions so bump the partition number if using label
-    if [ "$CRYPT_LABEL" -a -z "$CRYPT_DEV" ]; then
-        NEXT_DEVICE="$(next_device $DEVICE_LIST)" || fatal 'Could not find encrypted device after: %s' "$DEVICE_LIST"
-        DEVICE_LIST=$NEXT_DEVICE
-    fi
-
-    [ "$DEVICE_LIST" ] || fatal 'Strange, could not find encrypted device.'
-    CRYPT_DEVICE=$DEVICE_LIST
-
-    msg 'Found encrypted partition: %s' "$CRYPT_DEVICE"
-
-    if cryptsetup isLuks $CRYPT_DEVICE; then
-        cryptsetup luksOpen $CRYPT_DEVICE boot
-    else
-        cryptsetup create   boot $CRYPT_DEVICE
-    fi
-
-    PERSIST_ID=name=/dev/mapper/boot
-
-    [ "$BOOT_ID" ] || BOOT_ID=name=/dev/mapper/boot
-
-    for module in dm-crypt dm-mod serpent sha256 blowfish aes; do
-        load_module $module
-    done
 }
 
 #==============================================================================
@@ -2446,36 +2408,6 @@ next_device() {
         [ -b "$device" ] || continue
         echo $device
         return 0
-    done
-    return 1
-}
-
-# FIXME: converted retry to retry_time.  Need to test
-find_crypt_device() {
-    local retry_time=$1  try=-1
-    local start_t=$(get_time) current_t=0  final_try
-    local dt dt_secs loop_t1 usleep dt_secs
-    local goal_t=$(( start_t + retry_time * 100))
-    while [ -z "$final_try" ]; do
-        try=$((try + 1))
-        #-- delay every time but the first
-        if ! [ "$try" = "0" ]; then
-            [ "$try" = "1" ] && msgN "%s " "retrying"
-
-            current_t=$(get_time)
-            dt=$((current_t - loop_t1))
-            usleep=$(( ($RETRY_DELAY - dt ) * 10000))
-
-            [ $current_t -gt $goal_t ] && final_try=true
-
-            [ $usleep -gt 0 ] && usleep $usleep
-
-            msgN "."
-
-        fi
-        loop_t1=$(get_time)
-        find_device crypt "$try" "$final_try" "$CRYPT_ID" || return
-        [ "$DEVICE_LIST" ] && return 0
     done
     return 1
 }
