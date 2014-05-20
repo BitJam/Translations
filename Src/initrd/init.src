@@ -1923,7 +1923,12 @@ _non_fatal() { _error "Non-Fatal Error" "c" "continue"  "$@" ;}
 fatal()      { _fatal     "$(printf "$@")"                   ;}
 non_fatal()  { _non_fatal "$(printf "$@")"                   ;}
 
-YES_no() {
+YES_no() {  _yes_no 0 "yes" "$@" ;}
+yes_NO() {  _yes_no 1 "no"  "$@" ;}
+
+_yes_no() {
+    local def_ret=$1  def_lab=$(cq $2)
+    shift 2
     local ans title=$(printf "$m_co$@")
     local yes=$(cq "yes")  no=$(cq "no")  y_lett=$(bq y) n_lett=$(bq n)
 
@@ -1931,7 +1936,7 @@ YES_no() {
     echo
     while true; do
         echo -e "$title?"
-        printf "${m_co}$y_lett=$yes. $n_lett=$no. %s $y_lett=$yes\n" "The default is"
+        printf "${m_co}$y_lett=$yes. $n_lett=$no. %s $def_lab\n" "The default is"
         echo -n "$green>$nc_co "
 
         read ans
@@ -1940,7 +1945,7 @@ YES_no() {
             x[Nn]*) return 1;;
         esac
 
-        [ -z "$ans" ] && return 0
+        [ -z "$ans" ] && return $def_ret
         printf "$err_co%s$nc_co\n" "$err_msg"
     done
 }
