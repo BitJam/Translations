@@ -2084,24 +2084,26 @@ label_device() {
     esac
 
     local cmd=$(echo $pre | cut -d" " -f1)
-    local full=$(ld_path which $cmd 2>/dev/null)
+    local full=$(ld_path_which $cmd)
 
     if [ -z "$full" ]; then
-        warn "Don't have the tool to label a %s filesystem" $(pqw $type)
+        warn "Don't have the %s tool to label a %s filesystem" $(pqw $cmd) $(pqw $type)
         return 3
     fi
 
     local old=$(device_label $dev)
 
     if [ "$old" ]; then
-        YES_no "Update label on %s from %s to %s" $(pq $dev) "$(pq "$old")" "$(pq "$new")" || return
+        warn "The device %s already had label %s" $(pqw $dev) "$(pqw $old)"
+        yes_NO "Update label on %s from %s to %s" $(pq $dev) "$(pq "$old")" "$(pq "$new")" || return
     else
         warn "The device %s has no label" $(pqw $dev)
-        YES_no "Give %s the label %s" $(pq $dev) "$(pq "$new")" || return
+        yes_NO "Give %s the label %s" $(pq $dev) "$(pq "$new")" || return
     fi
 
-    log_cmd ld_path $pre "$new" $post
+    log_cmd ld_path $pre "$new" $post || return
 
+    msg "Label updated to %s" $(pq $new)
 }
 
 
@@ -3261,21 +3263,24 @@ copy_xtra() {
     msg
 }
 
+ld_path_which() {
+    local xdir prog=$1
+    for xdir in /sbin bin /usr/sbin /usr/bin /usr/local/bin; do
+        [ -x $LINUXFS_DIR$xdir/$prog ] || continue
+        echo $xdir/$prog
+        return 0
+    done
+    return 1
+}
+
 ld_path() {
     local xdir found prog=$1
 
-    if [ -n "${prog##/*}" ]; then
-        for xdir in /sbin bin /usr/sbin /usr/bin /usr/local/bin; do
-            [ -x $LINUXFS_DIR$xdir/$prog ] || continue
-            prog=$xdir/$prog
-            found=true
-            break
-        done
+    [ -n "${prog##/*}" ] && prog=$(ld_path_which $prog)
 
-        if [ -z "$found" ]; then
-            echo "${err_co}Program %s not found in pseudo-chroot" "$(pqe $1)"  >&2
-            return 1
-        fi
+    if [ -z "$prog" ]; then
+        echo "${err_co}Program %s not found under $LINUXFS_DIR" "$(pqe $1)"  >&2
+        return 1
     fi
 
     shift
