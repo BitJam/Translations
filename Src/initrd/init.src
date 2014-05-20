@@ -722,8 +722,7 @@ do_welcome() {
     local cpu_format="%s:$white %s"
     vmsg 6 "$cpu_format"  "             Linux kernel" "$(uname -r)"
     vmsg 6 "$cpu_format"  "             Screen width" "$SCREEN_WIDTH"
-
-    # vmsg 6 "$cpu_format"  "             Architecture" "$(uname -m)"
+    vmsg 6 "$cpu_format"  "              Kernel arch" "$(uname -m)"
 
     # vmsg 6  "$cpu_format" "                      CPU" "$(cpu_param 'model name' unknown)"
     # vmsg 6  "$cpu_format" "                    Cores" "$num_co$(cpu_param 'cpu cores'  1)"
