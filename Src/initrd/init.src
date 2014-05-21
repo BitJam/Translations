@@ -236,7 +236,7 @@ main_core() {
     prep_ld_path
 
     RW_MODE=rw
-    # FIXME: this makes debuggingg persist_makefs simpler
+    # FIXME: this makes debugging persist_makefs simpler
     #[ "$PERSIST_FILES" ] && mount -o remount,rw $SQFILE_DEV
     mount -o remount,rw $SQFILE_DEV
 
