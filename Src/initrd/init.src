@@ -2808,7 +2808,8 @@ _persist_makefs() {
         && warn "Not enough room on Live device to create %s file of size %s Meg" \
             $(fq $file) $(nq $orig_def_size)
 
-    local default_size=$(default_makefs_size $avail ${file}_SIZE_PARAM $orig_def_size)
+    local base_file=${file%%.*}
+    local default_size=$(default_makefs_size $avail ${base_file}_SIZE_PARAM $orig_def_size)
 
     vmsg 6 '    Default size: %s Meg' $(nq $default_size)
 
@@ -2893,6 +2894,7 @@ _persist_makefs() {
 
     breakpoint m "before makefs"
 
+    mkdir -p $(dirname $full_file)
     if dd if=/dev/zero of=$full_file bs=1M count=0 seek=$fs_size &>/dev/null; then
         if ! time_cmd ld_path /sbin/mkfs.$fs_type -q -F $full_file; then
             err "The %s command failed.  Deleting %s file" $(cqe mkfs.$fs_type) $(pqe $file)
