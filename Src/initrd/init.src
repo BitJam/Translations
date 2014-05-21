@@ -283,8 +283,6 @@ main_core() {
 
     mount_and_copy_rootfs
 
-    [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
-
     [ "$GFX_SAVE" ] && update_gfx_menu "$GFX_SAVE_SCRIPT" "$GFX_SAVE" "$BOOT_MP/boot"
 
     [ "$STATIC_ROOT" ] && log_cmd umount $AUFS_RAM_MP
@@ -295,6 +293,9 @@ main_core() {
 
     [ "$USE_MDEV" ] && mdev -s
     breakpoint 7 "after mounting aufs"
+
+    [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
+
     mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS" \
         && msg "Enabled %s persistence" "$(cq home)"
 
@@ -1945,12 +1946,10 @@ my_select() {
         cnt=$((cnt+1))
         dcnt=$cnt
 
-        if [ "$lab" = "quit" ]; then
-            dcnt=0
-            lab=$bold_co$lab$nc_co
-        fi
-
+        [ "$lab" = "quit" ] && dcnt=0
         data="${data}$dcnt:$lab\n"
+
+        [ "$lab" = "quit" ] && lab=$bold_co$lab$nc_co
         [ $cnt = "$default" ] && lab=$(printf "%${width}s (%s)" "$lab" "$(cq "default")")
         display="${display}$(printf "%2d) %${width}s" $dcnt "$lab")\n"
     done
