@@ -1232,7 +1232,12 @@ find_device() {
 
     [ "$try" != 0 ] && msg
 
-    [ "$AUTO_PERSIST" ] && return 100
+    if [ "$find_type" != boot ]; then
+        return 100
+    fi
+
+    [ "$AUTO_PERSIST"       ] && return 100
+    [ "$find_type" = frugal ] && return 100
 
     general_device_error "$find_type" "$type" "$value"
     return $err_ret
