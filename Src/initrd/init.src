@@ -1080,7 +1080,10 @@ _find_files() {
         # specified
         #----------------------------------------------------------------------
         else
-            [ "$mounted_device" ] && return 40
+            if [ "$mounted_device" ]; then
+                FOUND_ID_DEVICE=$mounted_device
+                return 40
+            fi
 
             # Give up early if the root device is found but the partition is not
             # But wait a second in case there is a delay for the partitions to show
