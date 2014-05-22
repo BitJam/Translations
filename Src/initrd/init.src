@@ -78,6 +78,7 @@ MKFS_FREE_MARGIN=20
 set_live_dirs() {
     local dir=$1
 
+         FRUGAL_MP="$dir/frugal"
            BOOT_MP="$dir/boot-dev"
         ISO_DEV_MP="$dir/iso-dev"
        ISO_FILE_MP="$dir/iso-file"
@@ -229,7 +230,13 @@ main_core() {
     breakpoint 3 "before looking for linuxfs file"
 
     RW_MODE=ro
-    find_linuxfs_file
+
+    if [ "$FRUGAL_ID" ]; then
+        find_frugal_file "$FRUGAL_ID" || frugal_error $?
+        breakpoint f "after find_frugal"
+    else
+        find_linuxfs_file
+    fi
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
 
@@ -370,6 +377,11 @@ read_cmdline_params()
             persistdev=*|pdev=*) PERSIST_ID=name=$value   ;  SET_PERSIST=true    ;;
 
  persistretry=*|pretry=*|ptry=*) valid_int PERSIST_RETRY $param                  ;;
+
+                         frugal) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true    ;;
+                         flab=*) FRUGAL_ID=label=$value         ; FRUGAL=        ;;
+                         fdev=*) FRUGAL_ID=name=$value          ; FRUGAL=        ;;
+                        fuuid=*) FRUGAL_ID=uuid=$value          ; FRUGAL=        ;;
 
                 iso=*|fromiso=*) ISO_FILE=${value/#}                             ;;
                     iso|fromiso) FROM_ISO=true                                   ;;
@@ -1244,6 +1256,124 @@ device_fstype() {
     echo $TYPE
 }
 
+frugal_error() {
+    local mp
+
+    for mp in $FRUGAL_MP $SQFS_MP; do
+        mountpoint -q $mp && umount $mp
+        [ -d $mp ] && rmdir $mp
+    done
+
+    non_fatal "Frugal install failed (or was teminated)"
+
+}
+
+find_frugal_file() {
+    local frugal_id=$1  bdir=$DISTRO-Frugal-$(uname -r)
+    local sqfile=$bdir/$SQFILE_NAME
+    local device name=${frugal_id%%=*}  value=${frugal_id#*=}
+
+    find_files frugal "$sqfile" "$BOOT_MP" "$frugal_id" "$RETRY_TIME"
+    local ret=$?
+
+    if [ $ret -eq 0 ]; then
+
+        msg "Found existing frugal install"
+        SQFILE_MP=$BOOT_MP
+        SQFILE_DEV=$FOUND_DEV
+
+        SQFILE_FULL=$BOOT_MP/$sqfile
+        SQFILE_PATH=${sqfile%/*}
+        DEFAULT_PERSIST_PATH=$SQFILE_PATH
+        SQFILE_DIR=$(dirname $SQFILE_FULL)
+        DEFAULT_DIR=$SQFILE_DIR
+
+        return 0
+
+    elif [ $ret -eq 40 ]; then
+        device=$FOUND_ID_DEVICE
+
+        warn
+        warn "Found %s device with %s" $(cqw frugal)  "$name $(cqw $value)"
+        warn "But did not find file %s on the device" "$(cqw $sqfile)"
+        warn "Will start normal boot to do frugal install"
+        warn
+
+    else
+
+        warn
+        warn "Could not find %s device with %s" $(cqw frugal) "$name $(cqw $value)"
+        warn "Will start normal boot to do frugal install"
+        warn
+
+    fi
+
+    find_boot_file "$SQFILE_FILE" "$BOOT_MP" "$BOOT_ID" "$RETRY_TIME" \
+        || linuxfs_error "Could not find %s file %s" "$LINUXFS_NAME" "$(fqe \"$SQFILE_FILE\")"
+
+    SQFILE_FULL=$BOOT_MP/$SQFILE_FILE
+    SQFILE_PATH=${SQFILE_FILE%/*}
+    DEFAULT_PERSIST_PATH=$SQFILE_PATH
+
+    mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
+
+    prep_ld_path
+
+    if  [ -z "$device" ]; then
+        msg "Please wait while existing partitions are found ..."
+
+        select_device "Please select frugal device" device
+        local ret=$?
+
+        [ -z "$device" -o "$device" = "quit" ] && return 1
+
+        [ "$FRUGAL" ] && label_device $device "$DISTRO-Frugal"
+
+    fi
+
+    mkdir -p $FRUGAL_MP
+
+    try_mount $device $FRUGAL_MP rw || return 10
+    local sqfile_full=$FRUGAL_MP/$sqfile
+
+    breakpoint f "in frugal install"
+
+    if [ -e $sqfile_full ]; then
+        msg "Found existing frugal install"
+    else
+        msg "Starting frugal install"
+
+        log_cmd mkdir -p $(dirname $sqfile_full)   || return 20
+
+        msg "Copying the linuxfs file.  Please be patient ..."
+        msg "copy %s to %s" $(pq $(basename $SQFILE_FULL)) $(pq $(dirname $sqfile_full)/)
+
+        if ! time_cmd cp $SQFILE_FULL $sqfile_full; then
+            warn "Copy failed.  Erasing partial copy"
+            log_cmd rm -f $sqfile_full
+            return 30
+        fi
+
+        msg "Frugal install succeeded"
+    fi
+
+    log_cmd umount $SQFS_MP
+    log_cmd umount $BOOT_MP
+
+    mount --move $FRUGAL_MP $BOOT_MP
+    rmdir $FRUGAL_MP
+
+    SQFILE_MP=$BOOT_MP
+    SQFILE_DEV=$device
+
+    SQFILE_FULL=$BOOT_MP/$sqfile
+    SQFILE_PATH=${sqfile%/*}
+    DEFAULT_PERSIST_PATH=$SQFILE_PATH
+    SQFILE_DIR=$(dirname $SQFILE_FULL)
+    DEFAULT_DIR=$SQFILE_DIR
+
+    return 0
+}
 
 find_linuxfs_file() {
 
