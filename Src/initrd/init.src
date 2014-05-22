@@ -152,8 +152,6 @@ main_wrapper() {
 
     SCREEN_WIDTH=$(stty size 2>/dev/null | cut -d" " -f2)
 
-    breakpoint 1 "before main_core"
-
     if [ "$NO_ERR_LOG" ]; then
         main_core
     else
@@ -204,7 +202,7 @@ main_core() {
         vmsg 6 'Populate %s with %s' $(dq /dev) $(cq devtmpfs)
     fi
 
-    breakpoint 2 "before loading modules"
+    breakpoint 1 "before loading modules"
 
     start_hotplug "$DO_HOTPLUG" "$TRACE_LOAD"
     load_kernel_modules "$DO_LOAD" "$MODULE_LIST"
@@ -227,7 +225,7 @@ main_core() {
     # will always work
     #[ "$NO_EHCI" ] && disable_hcd ehci
 
-    breakpoint 3 "before looking for linuxfs file"
+    breakpoint 2 "before looking for linuxfs file"
 
     RW_MODE=ro
 
@@ -238,6 +236,8 @@ main_core() {
         find_linuxfs_file
     fi
 
+    breakpoint 3 "after mounting boot device"
+
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
 
     prep_ld_path
@@ -247,7 +247,7 @@ main_core() {
     #[ "$PERSIST_FILES" ] && mount -o remount,rw $SQFILE_DEV
     mount -o remount,rw $SQFILE_DEV
 
-    breakpoint 4 "after mounting boot device and linuxfs"
+    breakpoint 4 "after mounting linuxfs file"
 
     prepare_persistence
 
