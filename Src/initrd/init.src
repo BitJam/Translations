@@ -2130,28 +2130,57 @@ my_select_2() {
     done
 }
 
+size_label_m() { _size_label $1   "M G T" ;}
+size_label_k() { _size_label $1 "K M G T" ;}
+
+_size_label() {
+    local unit frac  size=$1  units=$2
+    for unit in $units; do
+        if [ $size -lt 1024 ]; then
+            if [ "$frac"  -a $size -lt 10 ]; then
+                echo "$size.$frac$unit"
+            else
+                echo "$size$unit"
+            fi
+            return
+        fi
+        frac=$(( 10 * ($size % 1024) / 1024 ))
+        size=$(( size / 1024))
+    done
+    echo "$size$unit"
+}
+
 select_device() {
-    local title=$1  var=$2
+    local title=$1  var=$2  min_size=${3:-0}
     local cnt=1
-    local name size type label line model data display title
-    format="$green%3s $lt_cyan%-5s $magenta%-8s $lt_blue%-8s $yellow%-4s $white%-16s $lt_gray%s\n"
-    head_fmt="${hi_co}%3s %-5s %-8s %-8s %4s %-16s %s\n"
+    local name bytes type label line model data display title
+    format="$green%3s $lt_cyan%-5s $magenta%8s $lt_blue%-8s $lt_gray%-4s $white%-16s $lt_gray%s\n"
+    head_fmt="${hi_co}%3s %-5s %8s %-8s %4s %-16s %s\n"
 
     while read -r line ; do
+
+        bytes=0
+
         name=$(echo "$line" | cut -d" " -f1)
-        size=$(echo "$line" | cut -d" " -f2)
+        bytes=$(echo "$line" | cut -d" " -f2)
         type=$(echo "$line" | cut -d" " -f3)
         remove=$(echo "$line" | cut -d" " -f4)
         reado=$(echo "$line" | cut -d" " -f5)
         label=$(echo "$line" | cut -d" " -f6 | sed 's/\\x20/ /g')
         model=$(echo "$line" | cut -d" " -f7 | sed 's/\\x20/ /g')
 
+        local size=$((bytes / 1024 / 1024))
+        [ $min_size -gt 0 -a $min_size -gt $size ] && continue
+
+        local size_lab=$(size_label_m $size)
+
+
         [ "$reado" = 1 ] && continue
-        rtype=
-        [ "$remove" = 1 ] && rtype=usb
+        rtype=hd
+        [ "$remove" = 1 ] && rtype=${yellow}usb
 
         if [ "$name" = NAME ]; then
-            title="$title\n$(printf "$head_fmt" "" $name $size $type TYPE $label MODEL)"
+            title="$title\n$(printf "$head_fmt" "" $name $bytes $type TYPE $label MODEL)"
             continue
         fi
 
@@ -2169,11 +2198,11 @@ select_device() {
         local this_model=$last_model
         [ "${#label}" -gt 16 ] && this_model=
         data="${data}$cnt:/dev/$name\n"
-        line=$(printf "$format" "$cnt)" $name $size $type "$rtype" "$label" "$this_model")
+        line=$(printf "$format" "$cnt)" $name "$size_lab" $type "$rtype" "$label" "$this_model")
         display="${display}$line\n"
         cnt=$((cnt + 1))
     done <<Data
-    $(ld_path /bin/lsblk -ro name,size,fstype,rm,ro,label,model)
+$(ld_path /bin/lsblk -rbo name,size,fstype,rm,ro,label,model)
 Data
 
     line=$(printf "$format" "0)" "${bold_co}quit" "$m_co($(cq default))")
