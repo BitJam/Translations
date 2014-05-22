@@ -2433,7 +2433,7 @@ check_vid() {
             msg "Copy %s to empty %s" "$LINUXFS_NAME $VID_NAME" rootfs
 
             log_cmd mkdir -p "$mp$VID_DIR"      || return 1
-            echo "=== $sqfs_vid" > $vid_file
+            log_cmd cp $SQFS_VID_FILE $vid_file || return 2
             sync_fs
             return 0
 
