@@ -1158,7 +1158,7 @@ _find_files() {
             mntpnt="$(get_mountpoint $dev)"
             if [ "$mntpnt" ]; then
                 mounted=
-                mounted_device=true
+                mounted_device=$dev
                 [ "$already" ] || vmsg 5 "Device %s is already mounted at %s"  "$(dq $dev)" "$(mpq $mntpnt)"
                 already=true
             else
