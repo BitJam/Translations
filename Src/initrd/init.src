@@ -2184,7 +2184,7 @@ select_device() {
     #local rev=$(printf "\e[1;7m")
     (bogo_meter)&
     local pid=$!
- 
+
     while read -r line ; do
 
         bytes=0
