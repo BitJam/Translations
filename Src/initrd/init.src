@@ -303,8 +303,12 @@ main_core() {
 
     [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
 
-    mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS" \
-        && msg "Enabled %s persistence" "$(cq home)"
+    if mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS"; then
+        msg "Enabled %s persistence" "$(cq home)"
+    else
+        [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" "$(pqh home!)"
+    fi
+
 
     [ "$DELAYED_UMOUNT" ] && log_cmd umount -l $DELAYED_UMOUNT
 
@@ -3207,7 +3211,7 @@ mount_persist_file() {
     local full=$(readlink -f $PERSIST_FULL_PATH/$file)
 
     if ! [ -f "$full" ]; then
-        [ "$need" ] && non_fatal "Could not find file %s for required %s persistence" \
+        [ "$need" ] && err "Could not find file %s for required %s persistence" \
             "$(pqh $file)" "$type"
         return 3
     fi
