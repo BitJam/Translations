@@ -2074,7 +2074,6 @@ _yes_no() {
     local yes=$(cq "yes")  no=$(cq "no")  y_lett=$(bq y) n_lett=$(bq n)
 
     local err_msg=$(printf "You must answer %s or %s. Please try again" $(pqe y) $(pqe n))
-    echo
     while true; do
         echo -e "$title?"
         printf "${m_co}$y_lett=$yes. $n_lett=$no. %s $def_lab\n" "The default is"
