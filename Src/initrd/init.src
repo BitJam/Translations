@@ -1320,18 +1320,30 @@ find_frugal_file() {
     find_boot_file "$SQFILE_FILE" "$BOOT_MP" "$BOOT_ID" "$RETRY_TIME" \
         || linuxfs_error "Could not find %s file %s" "$LINUXFS_NAME" "$(fqe \"$SQFILE_FILE\")"
 
+    SQFILE_MP=$BOOT_MP
+    SQFILE_DEV=$FOUND_DEV
+
     SQFILE_FULL=$BOOT_MP/$SQFILE_FILE
     SQFILE_PATH=${SQFILE_FILE%/*}
     DEFAULT_PERSIST_PATH=$SQFILE_PATH
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
 
+    check_kernel_version $SQFS_MP
+
     prep_ld_path
 
     if  [ -z "$device" ]; then
-        msg "Please wait while existing partitions are found ..."
 
-        select_device "Please select frugal device" device
+        # FIXME: copy more files: initrd, vmlinuz, boot directory
+        local needed=$(du -sm $$SQFILE_FULL | cut -f1)
+        msg "Please wait while partitions with at least %s free are found ..." "$(nq $(size_label_m $needed))"
+
+        if ! select_device "Please select frugal device" device $needed; then
+            warn "No suitable devices were found"
+            return 2
+        fi
+
         local ret=$?
 
         [ -z "$device" -o "$device" = "quit" ] && return 1
@@ -1350,7 +1362,7 @@ find_frugal_file() {
     if [ -e $sqfile_full ]; then
         msg "Found existing frugal install"
     else
-        msg "Starting frugal install"
+        msg "Start frugal install"
 
         log_cmd mkdir -p $(dirname $sqfile_full)   || return 20
 
@@ -1363,7 +1375,7 @@ find_frugal_file() {
             return 30
         fi
 
-        msg "Frugal install succeeded"
+        warn "The frugal install succeeded"
     fi
 
     log_cmd umount $SQFS_MP
