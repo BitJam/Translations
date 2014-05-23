@@ -2167,65 +2167,107 @@ _size_label() {
 
 select_device() {
     local title=$1  var=$2  min_size=${3:-0}
-    local cnt=1
-    local name bytes type label line model data display title
-    format="$green%3s $lt_cyan%-5s $magenta%8s $lt_blue%-8s $lt_gray%-4s $white%-16s $lt_gray%s\n"
-    head_fmt="${hi_co}%3s %-5s %8s %-8s %4s %-16s %s\n"
 
+    local cnt=1 cnt_lab rtype mp=/tmp/mnt
+    local size size_lab free free_lab
+    local name bytes type label line model last_model data display title
+    local size_rev free_rev type_rev
+    #local format="$green%3s $lt_cyan%-5s $magenta%8s $yellow%8s $lt_blue%10s $lt_gray%9s $white%-16s $lt_gray%s\n"
+    local format="$green%3s $lt_cyan%-5s $magenta%s%8s$nc_co $yellow%s%8s$nc_co $lt_blue%s%10s$nc_co $lt_gray%10s  $white%-16s $lt_gray%s\n"
+    local head_fmt="${hi_co}%3s %-5s %8s %8s %10s %10s  %-16s %s\n"
+
+    title="$title\n$(printf "$head_fmt" "" name size free fstype removable label model)"
+
+    mkdir -p $mp
+    local rev=$(printf "\e[0;4;7;31m")
+    #local rev=$(printf "\e[5;7;31m")
+    #local rev=$(printf "\e[1;7m")
+    (bogo_meter)&
+    local pid=$!
+ 
     while read -r line ; do
 
         bytes=0
 
-        name=$(echo "$line" | cut -d" " -f1)
-        bytes=$(echo "$line" | cut -d" " -f2)
-        type=$(echo "$line" | cut -d" " -f3)
+        name=$(  echo "$line" | cut -d" " -f1)
+        bytes=$( echo "$line" | cut -d" " -f2)
+        type=$(  echo "$line" | cut -d" " -f3)
         remove=$(echo "$line" | cut -d" " -f4)
-        reado=$(echo "$line" | cut -d" " -f5)
-        label=$(echo "$line" | cut -d" " -f6 | sed 's/\\x20/ /g')
-        model=$(echo "$line" | cut -d" " -f7 | sed 's/\\x20/ /g')
+        reado=$( echo "$line" | cut -d" " -f5)
+        label=$( echo "$line" | cut -d" " -f6 | sed 's/\\x20/ /g')
+        model=$( echo "$line" | cut -d" " -f7 | sed 's/\\x20/ /g')
 
-        local size=$((bytes / 1024 / 1024))
-        [ $min_size -gt 0 -a $min_size -gt $size ] && continue
-
-        local size_lab=$(size_label_m $size)
-
+        [ "$model" ] && last_model=$model
 
         [ "$reado" = 1 ] && continue
-        rtype=hd
-        [ "$remove" = 1 ] && rtype=${yellow}usb
 
-        if [ "$name" = NAME ]; then
-            title="$title\n$(printf "$head_fmt" "" $name $bytes $type TYPE $label MODEL)"
-            continue
-        fi
+        case $type in
+            ""|udf|iso9660|swap|squashfs) continue
+        esac
 
         case $(stat -c %t /dev/$name) in
             [38]) ;;
                *) continue ;;
         esac
 
-        [ "$model" ] && last_model=$model
 
-        case $type in
-            ""|udf|iso9660|swap|squashfs) continue
-        esac
+        size=$((bytes / 1024 / 1024))
+        cnt_lab="$cnt)"
+        size_lab=$(size_label_m $size)
+
+        if [ $min_size -gt 0 -a $min_size -gt $size ]; then
+            size_rev=$rev
+            cnt_lab=
+        else
+            size_rev=
+        fi
+
+        if mount -t $type /dev/$name $mp; then
+            free=$(free_space $mp)
+            free_lab=$(size_label_m $free)
+            free_rev=
+            type_rev=
+            umount $mp
+            if [ $min_size -gt 0 -a $min_size -gt $free ]; then
+                free_rev=$rev
+                cnt_lab=
+            fi
+        else
+            free_lab="?"
+            type_rev=$rev
+            cnt_lab=
+        fi
+
+        rtype="no"
+        [ "$remove" = 1 ] && rtype=${yellow}"yes"
 
         local this_model=$last_model
-        [ "${#label}" -gt 16 ] && this_model=
-        data="${data}$cnt:/dev/$name\n"
-        line=$(printf "$format" "$cnt)" $name "$size_lab" $type "$rtype" "$label" "$this_model")
+        #[ "${#label}" -gt 16 ] && this_model=
+
+        line=$(printf "$format" "$cnt_lab" "$name" "$size_rev" "$size_lab" \
+            "$free_rev" "$free_lab" "$type_rev" "$type" "$rtype" "$label" "$this_model")
+
         display="${display}$line\n"
+
+        [ -z "$cnt_lab" ] && continue
+
+        data="${data}$cnt:/dev/$name\n"
         cnt=$((cnt + 1))
+
     done <<Data
-$(ld_path /bin/lsblk -rbo name,size,fstype,rm,ro,label,model)
+$(ld_path /bin/lsblk -rnbo name,size,fstype,rm,ro,label,model)
 Data
 
+    kill -9 $pid
+    echo
+    [ $cnt -lt 1 ] && return 1
     line=$(printf "$format" "0)" "${bold_co}quit" "$m_co($(cq default))")
 
     display="${display}$line\n"
     data="${data}0:quit\n"
 
     my_select_2 "$title" $var "0" "$data" "$display"
+    return 0
 }
 
 label_device() {
@@ -2260,10 +2302,10 @@ label_device() {
     local old=$(device_label $dev)
 
     if [ "$old" ]; then
-        warn "The device %s already had label %s" $(pqw $dev) "$(pqw $old)"
+        vmsg 1 "The device %s already has label %s" $(pqw $dev) "$(pq $old)"
         yes_NO "Update label on %s from %s to %s" $(pq $dev) "$(pq "$old")" "$(pq "$new")" || return
     else
-        warn "The device %s has no label" $(pqw $dev)
+        vmsg 1 "The device %s has no label" $(pq $dev)
         yes_NO "Give %s the label %s" $(pq $dev) "$(pq "$new")" || return
     fi
 
