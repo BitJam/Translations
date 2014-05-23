@@ -3299,14 +3299,16 @@ mount_persist_file() {
 # Function: remaster_rootfs <mountpoint> <full_path>
 #
 # If we did a remaster or rollback on linuxfs then we perform a similar
-# operation on the rootfs file if it exists.
+# operation on the rootfs file if it exists.  We have already remastered
+# the rootfs file in the boot directory so if that is the same as this
+# (persist) directory we do nothing here.
 #------------------------------------------------------------------------------
 remaster_rootfs() {
     local mp=$1  path=$2
 
     if [ "$DID_REMASTER" -o "$DID_ROLLBACK" ]; then
         if [ "$path" = "$BOOT_MP/$SQFILE_PATH" ]; then
-            msg "Will not remaster %s twice" rootfs
+            vmsg 6 "Will not remaster %s twice" rootfs
             return
         fi
     fi
