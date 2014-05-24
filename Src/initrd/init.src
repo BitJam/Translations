@@ -2185,9 +2185,9 @@ _size_label() {
 }
 
 select_device() {
-    local title=$1  var=$2  min_size=${3:-0}
+    local title="$1:"  var=$2  min_size=${3:-0}
 
-    local cnt=1 cnt_lab rtype mp=/tmp/mnt
+    local cnt=1 cnt_lab rtype mp=/tmp/mnt  skip
     local size size_lab free free_lab
     local name bytes type label line model last_model data display title
     local size_rev free_rev type_rev
@@ -2237,6 +2237,7 @@ select_device() {
         if [ $min_size -gt 0 -a $min_size -gt $size ]; then
             size_rev=$rev
             cnt_lab=
+            skip=true
         else
             size_rev=
         fi
@@ -2250,11 +2251,13 @@ select_device() {
             if [ $min_size -gt 0 -a $min_size -gt $free ]; then
                 free_rev=$rev
                 cnt_lab=
+                skip=true
             fi
         else
             free_lab="?"
             type_rev=$rev
             cnt_lab=
+            skip=true
         fi
 
         rtype="no"
@@ -2284,6 +2287,11 @@ Data
 
     display="${display}$line\n"
     data="${data}0:quit\n"
+    if [ "$skip" ]; then
+        local rev_video=$(printf "$rev%s$nc_co" "reverse video")
+        display="${display}$(printf "Partitions that can't be used are listed but not selectable.")\n"
+        display="${display}$(printf "The limiting factors are highlighted in %s" "$rev_video")\n"
+    fi
 
     my_select_2 "$title" $var "0" "$data" "$display"
     return 0
