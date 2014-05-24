@@ -1187,7 +1187,11 @@ _find_files() {
             fi
 
             if [ -n "$device_id" -a "$find_type" = persist ]; then
-                create_persist_files $mntpnt $PERSIST_PATH
+                if [ "$DID_FRUGAL" ]; then
+                    create_persist_files "$mntpnt" "$PESIST__PATH" "$WANT_ROOTFS" "$WANT_HOMEFS"
+                else
+                    create_persist_files "$mntpnt" "$PERSIST_PATH" "$NEED_ROOTFS" "$NEED_HOMEFS"
+                fi
             fi
 
             for fname in $files; do
@@ -1389,6 +1393,7 @@ find_frugal_file() {
         fi
 
         warn "The frugal install succeeded"
+        DID_FRUGAL=true
     fi
 
     log_cmd umount $SQFS_MP
