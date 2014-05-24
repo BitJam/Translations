@@ -2324,6 +2324,7 @@ Data
     fi
 
     my_select_2 "$title" $var "0" "$data" "$display"
+    echo -e "$display" >> $MY_LOG
     return 0
 }
 
