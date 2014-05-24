@@ -236,6 +236,9 @@ main_core() {
         find_linuxfs_file
     fi
 
+    mount -o remount,rw $BOOT_MP &>/dev/null
+    dir_has_param "$BOOT_MP" rw && REMASTERABLE=true
+
     breakpoint 3 "after mounting boot device"
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
@@ -1437,10 +1440,6 @@ find_linuxfs_file() {
         SQFILE_MP=$BOOT_MP
 
         SQFILE_DEV=$FOUND_DEV
-
-        mount -o remount,rw $BOOT_MP &>/dev/null
-        dir_has_param "$BOOT_MP" rw && REMASTERABLE=true
-        mount -o remount,rw $BOOT_MP &>/dev/null
 
         SQFILE_FULL=$BOOT_MP/$SQFILE_FILE
         SQFILE_PATH=${SQFILE_FILE%/*}
