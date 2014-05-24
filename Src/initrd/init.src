@@ -2185,7 +2185,8 @@ _size_label() {
 }
 
 select_device() {
-    local title="$1:"  var=$2  min_size=${3:-0}
+    local title_type=$1  var=$2  min_size=${3:-0}
+    local title=$(printf "Please select %s device:" "$title_type")
 
     local cnt=1 cnt_lab rtype mp=/tmp/mnt  skip
     local size size_lab free free_lab
@@ -2194,8 +2195,8 @@ select_device() {
     #local format="$green%3s $lt_cyan%-5s $magenta%8s $yellow%8s $lt_blue%10s $lt_gray%9s $white%-16s $lt_gray%s\n"
     local format="$green%3s $lt_cyan%-5s $magenta%s%8s$nc_co $yellow%s%8s$nc_co $lt_blue%s%10s$nc_co $lt_gray%10s  $white%-16s $lt_gray%s\n"
     local head_fmt="${hi_co}%3s %-5s %8s %8s %10s %10s  %-16s %s\n"
-
-    title="$title\n$(printf "$head_fmt" "" name size free fstype removable label model)"
+    local header=$(printf "$head_fmt" "" name size free fstype removable label model)
+    title="$title\n$header"
 
     mkdir -p $mp
     local rev=$(printf "\e[0;4;7;31m")
@@ -2282,13 +2283,20 @@ Data
 
     kill -9 $pid
     echo
-    [ $cnt -lt 1 ] && return 1
+
+    if [ $cnt -le 1 ]; then
+        msg_nc "$display"
+        warn "No suitable devices were found."
+        return 1
+    fi
+
     line=$(printf "$format" "0)" "${bold_co}quit" "$m_co($(cq default))")
 
     display="${display}$line\n"
     data="${data}0:quit\n"
     if [ "$skip" ]; then
         local rev_video=$(printf "$rev%s$nc_co" "reverse video")
+        display="$header\n$display"
         display="${display}$(printf "Partitions that can't be used are listed but not selectable.")\n"
         display="${display}$(printf "The limiting factors are highlighted in %s" "$rev_video")\n"
     fi
@@ -3192,7 +3200,7 @@ select_persist_device() {
 
     breakpoint x "before select device"
 
-    select_device "Please select persistence device" device
+    select_device "persistence" device || return 1
     local ret=$?
 
     [ -z "$device" -o "$device" = "quit" ] && return 1
