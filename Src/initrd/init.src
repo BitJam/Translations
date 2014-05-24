@@ -2489,8 +2489,8 @@ get_vid()   { [ -r "$1" ] && grep ^=== $1 | tail -n 1   ;}
 vid_error() {
     VID_ERROR=$(printf "$@")
     err "$@"
-    WANT_ROOT=
-    NEED_ROOT=
+    WANT_ROOTFS=
+    NEED_ROOTfS=
     STATIC_ROOT=
     log_cmd umount $ROOTFS_MP
 }
