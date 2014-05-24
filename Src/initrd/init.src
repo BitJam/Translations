@@ -384,6 +384,7 @@ read_cmdline_params()
 
  persistretry=*|pretry=*|ptry=*) valid_int PERSIST_RETRY $param                  ;;
 
+                          dbv=*) DBV=$value ;;
                          frugal) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true    ;;
                          flab=*) FRUGAL_ID=label=$value         ; FRUGAL=        ;;
                          fdev=*) FRUGAL_ID=name=$value          ; FRUGAL=        ;;
@@ -1791,6 +1792,11 @@ breakpoint() {
     local bp=$1  desc=$2
 
     custom_code "$bp" "$desc"
+
+    if [ "$DBV" ]; then
+        eval local val=\$$DBV
+        msg "$bold_co$DBV=$white$val"
+    fi
 
     if ! should_break_at $bp; then
 
