@@ -988,6 +988,15 @@ find_files() {
 _find_files() {
     local find_type=$1 files=$2  mp_orig=$3  device_id=$4  retry_time=$5
 
+    local short_files f
+    if [ ${#files} -gt 20 ]; then
+        for f in $files; do
+            short_files="$short_files$(basename $f) "
+        done
+    else
+        short_files=$files
+    fi
+
     local last_list root_device partition partition_error
 
     if [ -n "$device_id" -a -z "${device_id##name=*}" ]; then
@@ -1066,7 +1075,7 @@ _find_files() {
 
             #. Scan <type> devices for <type> file(s) <file names>
             [ "$try" = "0" ] \
-                && vmsg 4 "Scan %s devices.  Look for %s file(s) %s"  $(dq $FROM_TYPE) $find_type "$(fq $files)"
+                && vmsg 4 "Scan %s devices.  Look for %s file(s) %s"  $(dq $FROM_TYPE) $find_type "$(fq $short_files)"
 
             DEVICE_LIST=$(most_block_devices)
 
@@ -1138,10 +1147,10 @@ _find_files() {
             if [ -z "$have_devices" ]; then
                 [ "$try" != "0" ] && msg
                 #. Look for files(s) <file-list> on device(s) <device list>
-                vmsg 4 "Look for file(s) %s on device(s) %s" "$(pq $files)" "$(dq $DEVICE_LIST)"
+                vmsg 4 "Look for file(s) %s on device(s) %s" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
             else
                 #vmsg_if $vthresh
-                vmsg_if $vthresh "%s Look for %s on %s" "$cnt_up" "$(pq $files)" "$(dq $DEVICE_LIST)"
+                vmsg_if $vthresh "%s Look for %s on %s" "$cnt_up" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
             fi
         fi
 
