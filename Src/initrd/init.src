@@ -386,6 +386,7 @@ read_cmdline_params()
  persistretry=*|pretry=*|ptry=*) valid_int PERSIST_RETRY $param                  ;;
 
                           dbv=*) DBV=$value ;;
+                        fneed=*) FRUGAL_NEEDED=$value                            ;;
                          frugal) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true    ;;
                        frugal=*) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true  ; PERSIST=$value ;;
                          flab=*) FRUGAL_ID=label=$value         ; FRUGAL=        ;;
@@ -1354,13 +1355,11 @@ find_frugal_file() {
     if  [ -z "$device" ]; then
 
         # FIXME: copy more files: initrd, vmlinuz, boot directory
-        local needed=$(du -sm $$SQFILE_FULL | cut -f1)
-        msg "Please wait while partitions with at least %s free are found ..." "$(nq $(size_label_m $needed))"
+        local needed=$(du -sm $SQFILE_FULL | cut -f1)
+         [ "$FRUGAL_NEEDED" ] && needed=$FRUGAL_NEEDED
+        msg "Looking for partitions with at least %s free.  Please wait ..." "$(nq $(size_label_m $needed))"
 
-        if ! select_device "Please select frugal device" device $needed; then
-            warn "No suitable devices were found"
-            return 2
-        fi
+        select_device "frugal" device $needed || return 2
 
         local ret=$?
 
