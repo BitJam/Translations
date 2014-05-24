@@ -389,6 +389,7 @@ read_cmdline_params()
 
                           dbv=*) DBV=$value ;;
                         fneed=*) FRUGAL_NEEDED=$value                            ;;
+                         fforce) FORCE_FRUGAL=true                               ;;
                          frugal) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true    ;;
                        frugal=*) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true  ; PERSIST=$value ;;
                          flab=*) FRUGAL_ID=label=$value         ; FRUGAL=        ;;
@@ -1305,8 +1306,7 @@ find_frugal_file() {
     find_files frugal "$sqfile" "$BOOT_MP" "$frugal_id" "$RETRY_TIME"
     local ret=$?
 
-    if [ $ret -eq 0 ]; then
-
+    if [ $ret -eq 0  -a -z "$FORCE_FRUGAL" ]; then
         msg "Found existing frugal install"
         SQFILE_MP=$BOOT_MP
         SQFILE_DEV=$FOUND_DEV
@@ -1327,6 +1327,10 @@ find_frugal_file() {
         warn "But did not find file %s on the device" "$(cqw $sqfile)"
         warn "Will start normal boot to do frugal install"
         warn
+
+    elif [ "$FORCE_FRUGAL" ]; then
+        msg "Forcing frugal install"
+        [ $ret -eq 0 ] && device=$FOUND_ID_DEVICE
 
     else
 
