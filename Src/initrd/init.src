@@ -3005,13 +3005,13 @@ mount_persist_device() {
 }
 
 create_persist_files() {
-    local mp=$1 path=$2 dir=$1/$2
+    local mp=$1 path=$2 dir=$1/$2 need_rootfs=$3  need_homefs=$4
 
     mount -o remount,rw $mp 2>/dev/null
     dir_has_param "$mp" rw || return
 
     local make_homefs
-    if [ "$NEED_ROOTFS" ]; then
+    if [ "$need_rootfs" ]; then
 
         # Do we also make the homefs file?
         make_homefs=$WANT_HOMEFS
@@ -3029,8 +3029,8 @@ create_persist_files() {
         persist_makefs root $mp $dir $rootfs_file NEED_ROOTFS $default_size
 
     fi
-
-    [ -n "$NEED_HOMEFS" -o -n "$make_homefs" ] \
+    #msg "need_homefs:$need_homefs  make_homefs:$make_homefs"
+    [ -n "$need_homefs" -o -n "$make_homefs" ] \
         && persist_makefs home $mp $dir homefs NEED_HOMEFS
 }
 
