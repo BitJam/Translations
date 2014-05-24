@@ -20,8 +20,8 @@
          DEVELOPER="BitJam"
          DEV_EMAIL="http://antix.freeforums.org"
 
-        RETRY_TIME=15
-     PERSIST_RETRY=10
+        RETRY_TIME=5
+     PERSIST_RETRY=5
 
            RW_MODE="ro"
             DISTRO="Linux"
