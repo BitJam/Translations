@@ -2963,7 +2963,6 @@ mount_persist_device() {
 
     find_files persist "$persist_files" "$PERSIST_MP" "$PERSIST_ID" "$PERSIST_RETRY"
     local ret=$?
-    vmsg 8 "find_files() returned: $ret"
 
     # FIXME: select persist device here and then run find_files again.
     if [ "$AUTO_PERSIST" -a $ret -ne 0 -a $ret -ne 40 ]; then
