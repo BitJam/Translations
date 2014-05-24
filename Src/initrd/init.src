@@ -231,7 +231,6 @@ main_core() {
 
     if [ "$FRUGAL_ID" ]; then
         find_frugal_file "$FRUGAL_ID" || frugal_error $?
-        breakpoint f "after find_frugal"
     else
         find_linuxfs_file
     fi
