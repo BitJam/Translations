@@ -386,6 +386,7 @@ read_cmdline_params()
 
                           dbv=*) DBV=$value ;;
                          frugal) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true    ;;
+                       frugal=*) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true  ; PERSIST=$value ;;
                          flab=*) FRUGAL_ID=label=$value         ; FRUGAL=        ;;
                          fdev=*) FRUGAL_ID=name=$value          ; FRUGAL=        ;;
                         fuuid=*) FRUGAL_ID=uuid=$value          ; FRUGAL=        ;;
