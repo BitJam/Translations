@@ -34,8 +34,13 @@ for param in $CMDLINE; do
               tz=*)      CMD_TZ=${param#*=}; MUST_RUN=true ;;
          confont=*)    CMD_FONT=${param#*=}; MUST_RUN=true ;;
           conkbd=*)    CMD_KEYS=${param#*=}; MUST_RUN=true ;;
+          splash=*)      SPLASH=true                       ;;
     esac
 done
+
+if [ -n "$SPLASH" ] && [ -e /proc/fb ] && grep -vq VGA /proc/fb; then
+    which splash-term &>/dev/null && splash-term default
+fi
 
 [ "$MUST_RUN" ] || exit 0
 
