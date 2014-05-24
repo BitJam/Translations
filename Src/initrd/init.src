@@ -2337,7 +2337,7 @@ label_device() {
     local old=$(device_label $dev)
 
     if [ "$old" ]; then
-        vmsg 1 "The device %s already has label %s" $(pqw $dev) "$(pq $old)"
+        vmsg 1 "The device %s already has label %s" $(pq $dev) "$(pq $old)"
         yes_NO "Update label on %s from %s to %s" $(pq $dev) "$(pq "$old")" "$(pq "$new")" || return
     else
         vmsg 1 "The device %s has no label" $(pq $dev)
@@ -3014,7 +3014,6 @@ mount_persist_device() {
 
 create_persist_files() {
     local mp=$1 path=$2 dir=$1/$2 need_rootfs=$3  need_homefs=$4
-
     mount -o remount,rw $mp 2>/dev/null
     dir_has_param "$mp" rw || return
 
