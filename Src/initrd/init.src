@@ -2883,7 +2883,7 @@ prepare_persistence() {
     else
         # if we are on a read-only device and persist was set then set default
         # persist label if persist device was not explicitly given
-        if [ -z "$REMASTERABLE" -a -n "$PERSIST" ]; then
+        if [ -z "$REMASTERABLE" -a -n "$NEED_PERSIST" ]; then
             AUTO_PERSIST="$DISTRO-Persist"
             warn
             warn "Persistence was requested on a read-only boot device"
@@ -2940,9 +2940,9 @@ prepare_persistence() {
         # And if you try sometime ...
         case $param in
             home!|h!)
-                NEED_HOMEFS=true;;
+                NEED_HOMEFS=true;  NEED_PERSIST=true ;;
             root!|r!)
-                NEED_ROOTFS=true;;
+                NEED_ROOTFS=true;  NEED_PERSIST=true ;;
         esac
     done
     PERSIST_FILES=$persist_files
