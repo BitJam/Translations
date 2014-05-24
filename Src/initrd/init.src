@@ -52,6 +52,8 @@
           TOP_DIRS="bin boot etc lib lib64 opt root run sbin tmp usr var"
       TOP_BIN_DIRS="bin lib lib64 sbin usr"
 
+      FRUGAL_FILES="linuxfs linuxfs.md5 vmlinuz vmlinuz.md5 initrd.gz initrd.gz.md5 xtra ../boot"
+
      MAX_MOUNT_CNT=30
        RETRY_DELAY=50               # in hundredths of a second
            VERBOSE=5
@@ -1351,12 +1353,17 @@ find_frugal_file() {
 
     prep_ld_path
 
+    local old_dir=$(dirname $SQFILE_FULL)
+    local actual=$(file_usage_m $old_dir $FRUGAL_FILES)
+
+    # Safety first!
+    local needed=$((actual + 10))
+
+    [ "$FRUGAL_NEEDED" ] && needed=$FRUGAL_NEEDED
+
     if  [ -z "$device" ]; then
 
-        # FIXME: copy more files: initrd, vmlinuz, boot directory
-        local needed=$(du -sm $SQFILE_FULL | cut -f1)
-         [ "$FRUGAL_NEEDED" ] && needed=$FRUGAL_NEEDED
-        msg "Looking for partitions with at least %s free.  Please wait ..." "$(nq $(size_label_m $needed))"
+       msg "Looking for partitions with at least %s free.  Please wait ..." "$(nq $(size_label_m $needed))"
 
         select_device "frugal" device $needed || return 2
 
@@ -1372,23 +1379,34 @@ find_frugal_file() {
 
     try_mount $device $FRUGAL_MP rw || return 10
     local sqfile_full=$FRUGAL_MP/$sqfile
+    local sqfile_dir=$(dirname $sqfile_full)
+
+    [ "$FORCE_FRUGAL" ] && rm -rf $sqfile_dir
 
     breakpoint f "in frugal install"
 
     if [ -e $sqfile_full ]; then
         msg "Found existing frugal install"
     else
-        msg "Start frugal install"
 
-        log_cmd mkdir -p $(dirname $sqfile_full)   || return 20
+        local free=$(free_space $FRUGAL_MP)
 
-        msg "Copying the linuxfs file.  Please be patient ..."
-        msg "copy %s to %s" $(pq $(basename $SQFILE_FULL)) $(pq $(dirname $sqfile_full)/)
+        vmsg 5 'Device %s has %s free' $(pq $device) "$(nq $(size_label_m $free))"
 
-        if ! time_cmd cp $SQFILE_FULL $sqfile_full; then
+        if [ $free -lt $needed ]; then
+            err "Not enough free space on device %s to do install" $(pqe $device)
+            return 20
+        fi
+
+        heading "Frugal install, please be patient ..."
+        log_cmd mkdir -p $sqfile_dir || return 30
+
+        msg "copy %s to %s" $(pq $(size_label_m $actual)) $(pq $sqfile_dir/)
+
+        if ! time_cmd copy_files $old_dir $sqfile_dir $FRUGAL_FILES; then
             warn "Copy failed.  Erasing partial copy"
             log_cmd rm -f $sqfile_full
-            return 30
+            return 40
         fi
 
         warn "The frugal install succeeded"
@@ -2469,6 +2487,51 @@ cp_dir() {
     local ret=$?
     echo -n $nc_co
     return $ret
+}
+
+# FIXME: should use ld_path and --apparent-size se we aren't fooled by sparseness
+file_usage_k() {
+    local f file dir=$1
+    shift
+
+    [ "$dir" -a "${dir##*/}" ] && dir=$dir/
+    for f; do
+        file=$dir$f
+        [ -e $file ] && list="$list $file"
+    done
+    du -scxk $list >> $MY_LOG
+    du -scxk $list | tail -n 1 | cut -f1
+}
+
+file_usage_m() {
+    local f file dir=$1
+    shift
+
+    [ "$dir" -a "${dir##*/}" ] && dir=$dir/
+    for f; do
+        file=$dir$f
+        [ -e $file ] && list="$list $file"
+    done
+    du -scxm $list >> $MY_LOG
+    du -scxm $list | tail -n 1 | cut -f1
+}
+
+
+xxxfile_usage_m() {
+    local k=$(file_usage_k "$@")
+    echo $(( k / 1024))
+}
+
+copy_files() {
+    local f file sorc=$1  dest=$2
+    shift 2
+    [ "$sorc" -a "${sorc##*/}" ] && sorc=$sorc/
+    for f; do
+        file=$sorc$f
+        [ -e $file ] || continue
+        cp -a $sorc$f $dest/ || return $?
+    done
+    return 0
 }
 
 all_space()      { $LIVE_BIN/df -m "$1" | awk '{size=$2}END{print size}' ;}
