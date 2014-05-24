@@ -237,6 +237,7 @@ main_core() {
 
     mount -o remount,rw $BOOT_MP &>/dev/null
     dir_has_param "$BOOT_MP" rw && REMASTERABLE=true
+    [ "$DID_ISO" ] && REMASTERABLE=
 
     breakpoint 3 "after mounting boot device"
 
@@ -1447,6 +1448,7 @@ find_linuxfs_file() {
         SQFILE_DEV=$FOUND_DEV   # Used for toram-eject
         SQFILE_PATH=${SQFILE_FILE%/*}
 
+        DID_ISO=true
     else
 
         find_boot_file "$SQFILE_FILE" "$BOOT_MP" "$BOOT_ID" "$RETRY_TIME" \
