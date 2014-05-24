@@ -1187,10 +1187,9 @@ _find_files() {
                 mntpnt=$mp_orig
 
             fi
-
             if [ -n "$device_id" -a "$find_type" = persist ]; then
                 if [ "$DID_FRUGAL" ]; then
-                    create_persist_files "$mntpnt" "$PESIST__PATH" "$WANT_ROOTFS" "$WANT_HOMEFS"
+                    create_persist_files "$mntpnt" "$PERSIST_PATH" "$WANT_ROOTFS" "$WANT_HOMEFS"
                 else
                     create_persist_files "$mntpnt" "$PERSIST_PATH" "$NEED_ROOTFS" "$NEED_HOMEFS"
                 fi
