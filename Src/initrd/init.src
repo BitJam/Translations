@@ -1373,7 +1373,7 @@ find_frugal_file() {
 
        msg "Looking for partitions with at least %s free.  Please wait ..." "$(nq $(size_label_m $needed))"
 
-        select_device "frugal" device $needed || return 2
+        select_device "frugal" device $needed not_mounted || return 2
 
         local ret=$?
 
@@ -2211,15 +2211,15 @@ _size_label() {
 }
 
 select_device() {
-    local title_type=$1  var=$2  min_size=${3:-0}
+    local title_type=$1  var=$2  min_size=${3:-0} not_mounted=$4
     local title=$(printf "Please select %s device:" "$title_type")
 
     local cnt=1 cnt_lab rtype mp=/tmp/mnt  skip
     local size size_lab free free_lab
     local name bytes type label line model last_model data display title
-    local size_rev free_rev type_rev
+    local size_rev free_rev type_rev name_rev
     #local format="$green%3s $lt_cyan%-5s $magenta%8s $yellow%8s $lt_blue%10s $lt_gray%9s $white%-16s $lt_gray%s\n"
-    local format="$green%3s $lt_cyan%-5s $magenta%s%8s$nc_co $yellow%s%8s$nc_co $lt_blue%s%10s$nc_co $lt_gray%10s  $white%-16s $lt_gray%s\n"
+    local format="$green%3s $lt_cyan%s%-5s$nc_co $magenta%s%8s$nc_co $yellow%s%8s$nc_co $lt_blue%s%10s$nc_co $lt_gray%10s  $white%-16s $lt_gray%s\n"
     local head_fmt="${hi_co}%3s %-5s %8s %8s %10s %10s  %-16s %s\n"
     local header=$(printf "$head_fmt" "" name size free fstype removable label model)
     title="$title\n$header"
@@ -2243,6 +2243,8 @@ select_device() {
         label=$( echo "$line" | cut -d" " -f6 | sed 's/\\x20/ /g')
         model=$( echo "$line" | cut -d" " -f7 | sed 's/\\x20/ /g')
 
+        local dev=/dev/$name
+
         [ "$model" ] && last_model=$model
 
         [ "$reado" = 1 ] && continue
@@ -2251,11 +2253,13 @@ select_device() {
             ""|udf|iso9660|swap|squashfs) continue
         esac
 
-        case $(stat -c %t /dev/$name) in
+        case $(stat -c %t $dev) in
             [38]) ;;
                *) continue ;;
         esac
 
+        skip=
+        size_rev=
 
         size=$((bytes / 1024 / 1024))
         cnt_lab="$cnt)"
@@ -2265,16 +2269,30 @@ select_device() {
             size_rev=$rev
             cnt_lab=
             skip=true
-        else
-            size_rev=
         fi
 
-        if mount -t $type /dev/$name $mp; then
+        name_rev=
+        free_rev=
+        type_rev=
+        free=
+
+        local exist_mp=$(get_mountpoint $dev)
+        if [ "$exist_mp" ]; then
+            free=$(free_space $exist_mp)
+            if [ "$not_mounted" ]; then
+                name_rev=$rev
+                cnt_lab=
+                skip=true
+            fi
+
+        elif mount -t $type $dev $mp; then
             free=$(free_space $mp)
             free_lab=$(size_label_m $free)
-            free_rev=
-            type_rev=
             umount $mp
+        fi
+
+        if [ "$free" ]; then
+            free_lab=$(size_label_m $free)
             if [ $min_size -gt 0 -a $min_size -gt $free ]; then
                 free_rev=$rev
                 cnt_lab=
@@ -2293,14 +2311,14 @@ select_device() {
         local this_model=$last_model
         #[ "${#label}" -gt 16 ] && this_model=
 
-        line=$(printf "$format" "$cnt_lab" "$name" "$size_rev" "$size_lab" \
+        line=$(printf "$format" "$cnt_lab" "$name_rev" "$name" "$size_rev" "$size_lab" \
             "$free_rev" "$free_lab" "$type_rev" "$type" "$rtype" "$label" "$this_model")
 
         display="${display}$line\n"
 
         [ -z "$cnt_lab" ] && continue
 
-        data="${data}$cnt:/dev/$name\n"
+        data="${data}$cnt:$dev\n"
         cnt=$((cnt + 1))
 
     done <<Data
@@ -2311,6 +2329,7 @@ Data
     echo
 
     if [ $cnt -le 1 ]; then
+        display="$header\n$display"
         msg_nc "$display"
         warn "No suitable devices were found."
         return 1
@@ -2322,9 +2341,9 @@ Data
     data="${data}0:quit\n"
     if [ "$skip" ]; then
         local rev_video=$(printf "$rev%s$nc_co" "reverse video")
-        display="$header\n$display"
         display="${display}$(printf "Partitions that can't be used are listed but not selectable.")\n"
         display="${display}$(printf "The limiting factors are highlighted in %s" "$rev_video")\n"
+        display="${display}$(printf "A hightlighted name means the device is already mounted")\n"
     fi
 
     my_select_2 "$title" $var "0" "$data" "$display"
