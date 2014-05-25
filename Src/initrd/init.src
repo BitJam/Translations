@@ -1329,8 +1329,12 @@ find_frugal_file() {
         warn
 
     elif [ "$FORCE_FRUGAL" ]; then
-        msg "Forcing frugal install"
-        [ $ret -eq 0 ] && device=$FOUND_ID_DEVICE
+        msg "Force frugal install"
+        if [ $ret -eq 0  ]; then
+            device=$FOUND_DEV
+            umount $FOUND_DEV
+        fi
+        [ $ret -eq 40 ] && device=$FOUND_ID_DEVICE
 
     else
 
