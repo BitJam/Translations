@@ -3292,7 +3292,7 @@ select_persist_device() {
 
     breakpoint x "before select device"
 
-    select_device "persistence" device || return 1
+    select_device "persistence" device 100 || return 1
     local ret=$?
 
     [ -z "$device" -o "$device" = "quit" ] && return 1
