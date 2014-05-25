@@ -3249,23 +3249,25 @@ _persist_makefs() {
 
     breakpoint m "before makefs"
 
-    mkdir -p $(dirname $full_file)
-    if dd if=/dev/zero of=$full_file bs=1M count=0 seek=$fs_size &>/dev/null; then
-        if ! time_cmd ld_path /sbin/mkfs.$fs_type -q -F $full_file; then
-            err "The %s command failed.  Deleting %s file" $(cqe mkfs.$fs_type) $(pqe $file)
-            rm -f $full_file
-        fi
-    else
-        err "The %s command failed.  Deleting %s file" $(cqe dd) $(pqe $file)
+    if ! time_cmd makefs $full_file $fs_type $fs_size; then
+        err "Failed to create filesystem.  Deleting %s file" $(pqe $file)
         rm -f $full_file
+        return 3
     fi
 
-    test -e $full_file && msg "Created persistence file %s" $(fq $file)
+    do_fsck "new $file file" $full_file -p filefs || return 1
 
     eval $needed_var=\$needed
     eval $wanted_var=\$wanted
 
     return 0
+}
+
+makefs() {
+    local file=$1  type=$2  size=$3
+    mkdir -p $(dirname $file)                                     || return 1
+    dd if=/dev/zero of=$file bs=1M count=0 seek=$size &>/dev/null || return 2
+    ld_path /sbin/mkfs.$type -q -F $file                          || return 3
 }
 
 default_makefs_size() {
