@@ -15,8 +15,8 @@
 #              _FULL   absolute mountpoint and path and filename
 #              _DIR    varies
 
-           VERSION="6.20.00"
-      VERSION_DATE="Thu Apr 17 22:54:02 MDT 2014"
+           VERSION="7.00.01"
+      VERSION_DATE="Sat May 24 21:46:28 MDT 2014"
          DEVELOPER="BitJam"
          DEV_EMAIL="http://antix.freeforums.org"
 
