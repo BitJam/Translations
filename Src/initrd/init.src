@@ -1334,7 +1334,6 @@ find_frugal_file() {
             device=$FOUND_DEV
             umount $FOUND_DEV
         fi
-        [ $ret -eq 40 ] && device=$FOUND_ID_DEVICE
 
     else
 
