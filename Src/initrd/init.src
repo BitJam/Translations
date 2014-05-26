@@ -1185,7 +1185,7 @@ _find_files() {
                 already=true
             else
                 try_mount $dev $mp_orig || continue
-                mounted_device=true
+                mounted_device=$dev
                 mounted=true
                 mntpnt=$mp_orig
 
