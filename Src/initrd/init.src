@@ -3904,7 +3904,7 @@ prepare_switch_root() {
     # Remove libs, modules, and programs we won't need to save a little RAM
     rm -f $(find $live_dir/lib -type f -o -type l | egrep -v "/(ld|libc|libm)[.-][^/]*$")
 
-    (cd $live_dir/bin && rm -rf fbcondecor_helper ntfs-3g gfxsave.sh)
+    (cd $live_dir/bin && rm -rf fbcondecor_helper ntfs-3g)
     rm -rf /$live_dir/etc/splash
 
     # Work around a bug in fbcondecor_helper
