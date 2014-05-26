@@ -1382,9 +1382,16 @@ find_frugal_file() {
 
     fi
 
-    mkdir -p $FRUGAL_MP
+    if ! mkdir -p $FRUGAL_MP; then
+        err "Could not make frugal directory"
+        return 10
+    fi
 
-    try_mount $device $FRUGAL_MP rw || return 10
+    if ! try_mount $device $FRUGAL_MP rw; then
+        err "Could not mount frugal device %s" $(pqe $device)
+        return 20
+    fi
+
     local sqfile_full=$FRUGAL_MP/$sqfile
     local sqfile_dir=$(dirname $sqfile_full)
 
