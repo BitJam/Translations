@@ -2980,22 +2980,12 @@ _copy_to_ram() {
 # Parse the persist= bootcode but first set defaults.
 #------------------------------------------------------------------------------
 prepare_persistence() {
-    local param persist_files
+    local param persist_files auto_persist=true
 
     # pdev= and pdir= etc enable persistence even with no persist= bootcode.
     if [ "$PERSIST_ID" ]; then
         : ${PERSIST:=root,home}
-    else
-        # if we are on a read-only device and persist was set then set default
-        # persist label if persist device was not explicitly given
-        if [ -z "$REMASTERABLE" -a -n "$NEED_PERSIST" ]; then
-            AUTO_PERSIST="$DISTRO-Persist"
-            warn
-            warn "Persistence was requested on a read-only boot device"
-            warn "Will search for a persistence device with the label %s" "$(pqw $AUTO_PERSIST)"
-            warn
-            PERSIST_ID=label="$AUTO_PERSIST"
-        fi
+        auto_persist=
     fi
 
     PERSIST_PATH=${PERSIST_PATH:-$DEFAULT_PERSIST_PATH}
@@ -3051,6 +3041,19 @@ prepare_persistence() {
         esac
     done
     PERSIST_FILES=$persist_files
+
+    [ "$auto_persist" ] || return
+
+    # if we are on a read-only device and persist was set then set default
+    # persist label if persist device was not explicitly given
+    [ -z "$REMASTERABLE" -a -n "$NEED_PERSIST" ] || return
+
+    AUTO_PERSIST="$DISTRO-Persist"
+    warn
+    warn "Persistence was requested on a read-only boot device"
+    warn "Will search for a persistence device with the label %s" "$(pqw $AUTO_PERSIST)"
+    warn
+    PERSIST_ID=label="$AUTO_PERSIST"
 
 }
 
