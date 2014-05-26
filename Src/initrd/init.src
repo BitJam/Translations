@@ -3062,7 +3062,16 @@ mount_persist_device() {
 
     [ "$persist_files" ] || return
 
-    [ "$from_persist" ] || : ${PERSIST_ID:=name=$SQFILE_DEV}
+    # Set persist device to boot device if appropriate
+    if [ -z "$from_persist" -a -z "$PERSIST_ID" ]; then
+
+        case $(stat -c %t $SQFILE_DEV) in
+         [38]) ;;
+            *) warn "Can't use %s as a persistence device" $(pqw $SQFILE_DEV)
+               return 20 ;;
+        esac
+        : ${PERSIST_ID:=name=$SQFILE_DEV}
+    fi
 
     heading "Mount persistence device (if needed)"
 
