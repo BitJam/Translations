@@ -3612,7 +3612,13 @@ fancy_prompt() {
 }
 
 copy_xtra() {
-    local dir xtra_dir=$1/xtra
+    local dir xtra_dir=$1/xtra tarball=$1/xtra.tgz
+
+    if [ -e $tarball ]; then
+        msg "Unpack xtra tarball"
+        gunzip -c $tarball | tar x -C $NEW_ROOT/
+    fi
+
     [ -d "$xtra_dir" ] || return
     local list=$(ls $xtra_dir)
     [ -n "$list" ] || return
