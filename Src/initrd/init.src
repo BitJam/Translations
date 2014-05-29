@@ -952,9 +952,10 @@ from_filter() {
 }
 
 find_boot_file() {
-    local ret file=$2
+    local ret
     find_files boot "$@"
     ret=$?
+    local file=$1
 
     case $ret in
         10) fatal "No %s devices found" block             ;;
