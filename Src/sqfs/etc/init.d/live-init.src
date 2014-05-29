@@ -16,6 +16,7 @@ case "$1" in
     start)
         ;;
     stop)
+        save_desktop 
         exit 0
         ;;
     *)
@@ -31,7 +32,7 @@ XSESSION_DIR=/usr/share/xsessions
 space_DESKTOPS=fluxbox,icewm,jwm
       MENU_WMs="fluxbox icewm jwm"
       FF_PREFS="/etc/skel/.mozilla/firefox/*/prefs.js"
-
+      INIT_OUT=/live/config/init.out
 AUTOMOUNT=
 #-jbb For debugging
 CMDLINE=${CMDLINE:-$(cat /proc/cmdline)}
@@ -67,6 +68,43 @@ umask 022
 
 start_init_logging
 load_translation
+
+get_init_param() { eval $(grep ^$1= $init_out) ;}
+
+save_desktop() {
+    :
+}
+
+# .desktop-session/default-desktop
+
+restore_desktop() {
+    get_init_param REMASTERABLE
+    [ "$REMASTERABLE" ] || return
+
+    get_init_param PERSISTENCE
+    [ "$PERSISTENCE" ] && return
+
+    get_init_param SQFILE_PATH
+
+    local d dir
+    for d in /live/boot-dev live/to-ram; do
+        d=$d/$SQFILE_PATH/desktop
+        [ -d $d ] || continue
+        dir=$d
+        break
+    done
+
+    [ "$dir" ] || return
+
+    local user dest file
+    for user in $(ls $dir); do
+        dest=/home/$user/.desktop-session
+        file=$dir/$user/default-desktop
+        [ -d $dest ] || continue
+        [ -e $file ] || continue
+        cp $file $dest/
+    done
+}
 
 create_home() {
 
@@ -415,6 +453,7 @@ Keyboard_Out
     fi
 
     create_home
+    restore_desktop
 
     enable_xkb="s/^#\?setxkbmap.*/setxkbmap -layout \"$XKBLAYOUT\" -option \"$XKBOPTIONS\" -variant \"$XKBVARIANT\"/"
 
