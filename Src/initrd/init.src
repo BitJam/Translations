@@ -1303,7 +1303,7 @@ frugal_error() {
 
 find_frugal_file() {
     local frugal_id=$1  bdir=$DISTRO-Frugal-$(uname -r)
-    local sqfile=$bdir/$SQFILE_NAME
+    local sqfile=$bdir/$SQFILE_NAME need_to_ask
     local device name=${frugal_id%%=*}  value=${frugal_id#*=}
 
     find_files frugal "$sqfile" "$BOOT_MP" "$frugal_id" "$RETRY_TIME"
@@ -1324,6 +1324,7 @@ find_frugal_file() {
 
     elif [ $ret -eq 40 ]; then
         device=$FOUND_ID_DEVICE
+        need_to_ask=true
 
         warn
         warn "Found %s device with %s" $(cqw frugal)  "$name $(cqw $value)"
@@ -1373,7 +1374,7 @@ find_frugal_file() {
 
     if  [ -z "$device" ]; then
 
-       msg "Looking for partitions with at least %s free.  Please wait ..." "$(nq $(size_label_m $needed))"
+        msg "Looking for partitions with at least %s free.  Please wait ..." "$(nq $(size_label_m $needed))"
 
         select_device "frugal" device $needed not_mounted || return 2
 
@@ -1382,7 +1383,6 @@ find_frugal_file() {
         [ -z "$device" -o "$device" = "quit" ] && return 1
 
         [ "$FRUGAL" ] && label_device $device "$DISTRO-Frugal"
-
     fi
 
     if ! mkdir -p $FRUGAL_MP; then
@@ -1413,6 +1413,10 @@ find_frugal_file() {
         if [ $free -lt $needed ]; then
             err "Not enough free space on device %s to do install" $(pqe $device)
             return 20
+        fi
+
+        if [ "$need_to_ask" ]; then
+            YES_no "Do you want to do a frugal on the %s device?" $(pq $device) || return 2
         fi
 
         heading "Frugal install, please be patient ..."
