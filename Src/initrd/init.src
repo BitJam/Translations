@@ -33,7 +33,7 @@
 
           AUFS_DIR="aufs"
 
-       EXTRA_FILES="deb xtra"
+       EXTRA_FILES="deb xtra xtra.tgz desktop"
        MIN_SYS_RAM=80
       MIN_AUFS_RAM=80
 
@@ -44,7 +44,7 @@
             MY_LOG=/init.log
            VID_DIR="/etc/live/version"
           VID_FILE="$VID_DIR/linuxfs.ver"
-          MAKE_OLD="rootfs xtra deb"
+          MAKE_OLD="rootfs xtra deb xtra.tgz"
            MOD_DIR="/lib/modules/$(uname -r)"
 
          FROM_TYPE="usb,cd"
@@ -52,7 +52,7 @@
           TOP_DIRS="bin boot etc lib lib64 opt root run sbin tmp usr var"
       TOP_BIN_DIRS="bin lib lib64 sbin usr"
 
-      FRUGAL_FILES="linuxfs linuxfs.md5 vmlinuz vmlinuz.md5 initrd.gz initrd.gz.md5 xtra ../boot"
+      FRUGAL_FILES="linuxfs linuxfs.md5 vmlinuz vmlinuz.md5 initrd.gz initrd.gz.md5 xtra xtra.tgz ../boot"
 
      MAX_MOUNT_CNT=30
        RETRY_DELAY=50               # in hundredths of a second
@@ -241,6 +241,8 @@ main_core() {
     dir_has_param "$BOOT_MP" rw && REMASTERABLE=true
     [ "$DID_ISO" ] && REMASTERABLE=
 
+    BOOT_UUID=$(device_uuid $SQFILE_DEV)
+    msg "boot device uuid: $BOOT_UUID"
     breakpoint 3 "after mounting boot device"
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
@@ -3721,6 +3723,7 @@ AUFS_RAM_MP="$AUFS_RAM_MP"
 AUFS_VID_FILE="$AUFS_MP$VID_FILE"
 BOOT_DEV="$SQFILE_DEV"
 BOOT_MP="$ORIG_SQFILE_MP"
+BOOT_UUID="$BOOT_UUID"
 DF_ROOTFS="$DF_ROOTFS"
 DID_REMASTER="$DID_REMASTER"
 DID_ROLLBACK="$DID_ROLLBACK"
@@ -3778,6 +3781,7 @@ AUFS_RAM_MP="$AUFS_RAM_MP"
 AUFS_VID_FILE="$AUFS_MP$VID_FILE"
 BOOT_DEV="$SQFILE_DEV"
 BOOT_MP="$ORIG_SQFILE_MP"
+BOOT_UUID="$BOOT_UUID"
 DF_ROOTFS="$DF_ROOTFS"
 DID_REMASTER="$DID_REMASTER"
 DID_ROLLBACK="$DID_ROLLBACK"
