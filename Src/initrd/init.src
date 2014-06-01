@@ -466,6 +466,7 @@ read_cmdline_params()
         video.*);;
 
         # Most kernel codes from version 3.8
+        forcepae);;
         acpi=*|acpi_rsdp=*|acpi_apic_instance=*|acpi_backlight=*);;
         acpi.debug_layer=*|acpi.debug_level=*|acpi_irq_balance);;
         acpi_irq_nobalance|acpi_irq_isa=*|acpi_irq_pci=*|acpi_no_auto_ssdt);;
