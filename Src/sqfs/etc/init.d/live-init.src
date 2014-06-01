@@ -23,15 +23,16 @@ space_DESKTOPS=fluxbox,icewm,jwm
 AUTOMOUNT=
 #-jbb For debugging
 CMDLINE=${CMDLINE:-$(cat /proc/cmdline)}
+value=${param#*=}
 for param in $CMDLINE; do
     case "$param" in
-             desktop=*)  CMD_DESKTOP=${param#*=}                    ;;
-                 dpi=*)      CMD_DPI=${param#*=}                    ;;
-                 kbd=*)      CMD_KBD=${param#*=} ;     DO_XKBD=true ;;
-               kbopt=*)   XKBOPTIONS=${param#*=} ;     DO_XKBD=true ;;
-               kbvar=*)   XKBVARIANT=${param#*=} ;     DO_XKBD=true ;;
-                lang=*)     CMD_LANG=${param#*=} ;     DO_XKBD=true ;;
-              mirror=*)   CMD_MIRROR=${param#*=}                    ;;
+             desktop=*)  CMD_DESKTOP=$value                         ;;
+                 dpi=*)      CMD_DPI=$value                         ;;
+                 kbd=*)      CMD_KBD=$value ;          DO_XKBD=true ;;
+               kbopt=*)   XKBOPTIONS=$value ;          DO_XKBD=true ;;
+               kbvar=*)   XKBVARIANT=$value ;          DO_XKBD=true ;;
+                lang=*)     CMD_LANG=$value ;          DO_XKBD=true ;;
+              mirror=*)   CMD_MIRROR=$value                         ;;
 
               xorgconf)                              MAKE_XORG=true ;;
                 xres=*)                              MAKE_XORG=true ;;
@@ -40,9 +41,9 @@ for param in $CMDLINE; do
 
 automount=off|amnt=off)                          AUTOMOUNT_OFF=true ;;
         automount|amnt)                              AUTOMOUNT=true ;;
-    automount=*|amnt=*)    CMD_MOUNT=${param#*=} ;   AUTOMOUNT=true ;;
-               mount=*)    CMD_MOUNT=${param#*=}                    ;;
-               fstab=*)    CMD_FSTAB=${param#*=}                    ;;
+    automount=*|amnt=*)    CMD_MOUNT=$value ;        AUTOMOUNT=true ;;
+               mount=*)    CMD_MOUNT=$value ;        AUTOMOUNT=true ;;
+               fstab=*)    CMD_FSTAB=$value                         ;;
 
     esac
 done
