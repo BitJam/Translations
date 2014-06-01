@@ -6,24 +6,11 @@
 # Required-Stop:
 # Should-Start:
 # Should-Stop:
-# Default-Start:     S 
+# Default-Start:     S
 # Default-Stop:
 # Short-Description: live-init
 # Description: localize /etc/skel, create /home/demo, customize X, mirrors, set default desktop
 ### END INIT INFO
-
-case "$1" in
-    start)
-        ;;
-    stop)
-        save_desktop 
-        exit 0
-        ;;
-    *)
-        echo "Usage: $0 {start|stop}"
-        exit 1
-        ;;
-esac
 
 XSESSION_DIR=/usr/share/xsessions
 
@@ -69,15 +56,77 @@ umask 022
 start_init_logging
 load_translation
 
-get_init_param() { eval $(grep ^$1= $init_out) ;}
-
-save_desktop() {
-    :
+main() {
+    case "$1" in
+        start)
+            do_start
+            ;;
+        stop)
+            save_desktop
+            exit 0
+            ;;
+        test)
+            restore_desktop
+            exit 0
+            ;;
+        *)
+            echo "Usage: $0 {start|stop}"
+            exit 1
+            ;;
+    esac
 }
 
-# .desktop-session/default-desktop
+get_init_param() { eval $(grep ^$1= $INIT_OUT) ;}
+
+save_desktop() {
+    get_init_param REMASTERABLE
+    [ "$REMASTERABLE" ] || return
+
+    get_init_param DID_TORAM
+    if [ "$DID_TORAM" ]; then
+
+        get_init_param BOOT_UUID
+        if [ -z "$BOOT_UUID" ; then
+            echo "Could not find UUID of boot device for remounting"
+            echo "Will not save defaults desktops"
+            return
+        fi
+        mkdir -p /live/boot-dev/
+        if ! mount -U $BOOT_UUID /live/boot-dev; then
+            echo "Could not remount boot device"
+            echo "Will not save defaults desktops"
+            return
+        fi
+    fi
+
+    get_init_param SQFILE_PATH
+    local to_dir=/live/boot-dev/$SQFILE_PATH/desktop
+
+    local user from to
+    for user in $(ls /home); do
+        from="/home/$user/.desktop-session/default-desktop"
+        [ -e "$from" ] || continue
+        to="$to_dir/$user/default-desktop"
+        echo "maybe save $user desktop"
+        should_copy "$from" "$to" || continue
+        mkdir -p $(dirname "$to")
+        cp "$from" "$to"
+        echo "save $user desktop"
+    done
+}
+
+should_copy() {
+    local from="$1"  to="$2"
+    [ -e "$from" ] || return 1
+    [ -e "$to"   ] || return 0
+    diff -q "$from" "$to" 1>/dev/null 2>/dev/null && return 1
+    return 0
+}
 
 restore_desktop() {
+    # There are many reasons to not restore
+    [ "$CMD_DESKTOP" ] && return
+
     get_init_param REMASTERABLE
     [ "$REMASTERABLE" ] || return
 
@@ -96,13 +145,18 @@ restore_desktop() {
 
     [ "$dir" ] || return
 
-    local user dest file
+    local user dest_dir dest sorc
     for user in $(ls $dir); do
-        dest=/home/$user/.desktop-session
-        file=$dir/$user/default-desktop
-        [ -d $dest ] || continue
-        [ -e $file ] || continue
-        cp $file $dest/
+        sorc=$dir/$user/default-desktop
+        dest_dir=/home/$user/.desktop-session
+        [ -d "$dest_dir" ] || continue
+        [ -e "$sorc"     ] || continue
+        local dest=$dest_dir/default-desktop
+        echo "maybe restore $user desktop"
+        should_copy $sorc $dest || continue
+        echo "restore $user desktop"
+        cp "$sorc" "$dest"
+        chown $user:users $dest
     done
 }
 
@@ -382,7 +436,7 @@ automount_and_fstab() {
 
 #----- Main code starts here --------------------------------------------------
 
-{
+do_start() {
     echo_script "Localizing/configuring X-Windows" $0
 
     DISTRO="unknown"
@@ -470,6 +524,8 @@ Keyboard_Out
         rm -f /etc/skel/Desktop/Install.desktop
     done
 
-} 2>&1 | tee -a $INIT_LOG_FILE
+} 
+
+main "$@" 2>&1 | tee -a $INIT_LOG_FILE
 
 exit 0
