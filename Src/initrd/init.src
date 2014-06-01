@@ -2299,7 +2299,8 @@ select_device() {
                 skip=true
             fi
 
-        elif mount -t $type $dev $mp; then
+        # The busybox mount error messages are worthless at best
+        elif mount -t $type $dev $mp &>/dev/null; then
             free=$(free_space $mp)
             free_lab=$(size_label_m $free)
             umount $mp
