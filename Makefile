@@ -32,8 +32,8 @@ FIND_OPTS  		:= -not -type d
 SRC_FILES       := $(shell find $(OUT_DIR) $(FIND_OPTS))
 TARG_FILES 		:= $(patsubst $(FROM_DIR)%,$(PREFIX)%, $(SRC_FILES))
 TARG_DIRS  		:= $(sort $(dir $(TARG_FILES)))
-
 LIVE_INIT_SRC   := Src/initrd/init.src
+INITRD_SRC      := $(shell find Src/initrd -name "*.src")
 
 .PHONY:  help help-more all force-all xlat force-xlat mo force-mo validate
 .PHONY:  initrd install-initrd install uninstall clean bump
@@ -103,12 +103,12 @@ force-mo:
 initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
-	$(CMD_MAKE_XLAT) --verbose init
+	$(CMD_MAKE_XLAT) --verbose $(INITRD_SRC)
 
 force-initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
-	$(CMD_MAKE_XLAT) --verbose --force init
+	$(CMD_MAKE_XLAT) --verbose --force $(INITRD_SRC)
 
 bump:
 	sed -i -r "s/^(\s*VERSION_DATE=).*/\1\"$$(date)\"/" $(LIVE_INIT_SRC)
@@ -128,9 +128,9 @@ validate:
 #	$(CMD_REPLACE) --init --mode=plain   -o $(INITRD_XLAT_DIR)/en/init.xlat $<
 
 install-initrd:
-	$(CMD_MAKE_XLAT) --verbose --force --stop-at=en init
+	$(CMD_MAKE_XLAT) --verbose --force --stop-at=en $(INITRD_SRC)
 	@#$(CMD_MAKE_XLAT) --verbose --force init
-	chmod a+x $(INITRD_DIR)/init
+	chmod a+x $(INITRD_DIR)/init $(INITRD_DIR)/live/bin/*
 	/live/bin/sh -n $(INITRD_DIR)/init
 	[ -d "$(INITRD_IDIR)" ] && cp -a $(INITRD_DIR)/* $(INITRD_IDIR)
 
