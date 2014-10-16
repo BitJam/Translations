@@ -48,9 +48,10 @@ associated with the transifex.com web site.
 
 Options:
   -d --domains=<file>  File containing domains        :$DOMAIN_FILE
+     --full            Don't remove lines from xlat file that are in en.xlat
   -f --force           Force update even if output is newer than source
   -h --help            Show this help
-  -k -skip             replace|en|strmaker|pot|mo
+  -k --skip            replace|en|strmaker|pot|mo
   -m --mo-only         Only make .mo files
   -o --outdir=<dir>    Output directory               :$OUTPUT_DIR
   -p --pretend         Don't write any files
@@ -82,7 +83,7 @@ main() {
 
         # Deal with all options that take a parameter
         case $arg in
-            -domains|-skip|-outdir|-renames|-stop-at|-transdir|[dkorst]) 
+            -domains|-skip|-outdir|-renames|-stop-at|-transdir|[dkorst])
                 [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
                 val=$1
                 [ -n "$val" -a -z "${val##-*}" ] \
@@ -96,6 +97,7 @@ main() {
           -domains|d) DOMAIN_FILE=$val                 ;;
       -domains=*|d=*) DOMAIN_FILE=$val                 ;;
             -force|f) FORCE=true                       ;;
+               -full) FULL=true                        ;;
              -help|h) usage                            ;;
              -skip|k) SKIP_AT="$SKIP_AT,$val"          ;;
           -mo-only|m) MO_ONLY=true                     ;;
@@ -112,7 +114,7 @@ main() {
           -verbose|v) VERBOSE=true                     ;;
           -VERBOSE|V) VERY_VERBOSE=true                ;;
                    *) fatal "Unknown parameter -$arg"  ;;
-        esac 
+        esac
 
     done
     local domain name rename tdir po_count=0 mo_count=0 xlat_count=0
@@ -136,7 +138,7 @@ main() {
 
     sayp $(echo "$input_files" | wc -w) "Start with %n domain name%s"
     vvsay "$input_files"
- 
+
     local mo_dir=$MO_DIR
     [ "$MO_ONLY" ] && mo_dir=$OUTPUT_DIR$MO_ONLY_DIR
 
@@ -159,8 +161,8 @@ main() {
         # Only used in xlat mode but no harm to always do it
         local xlat_dir
         case $domain in
-          init|ejectcd)  xlat_dir=$INITRD_DIR/live/locale/xlat;;
-                     *)  xlat_dir=$OUTPUT_DIR$XLAT_DIR ;;
+      tsplash|init|ejectcd)  xlat_dir=$INITRD_DIR/live/locale/xlat;;
+                         *)  xlat_dir=$OUTPUT_DIR$XLAT_DIR ;;
         esac
 
         local str_maker=$STR_MAKER_DIR/$domain.str
@@ -172,10 +174,10 @@ main() {
             warn "Could not find translations directory for $domain / $name"
             continue
         fi
-        
+
         vvsay "directory: $tdir"
         #continue
-       
+
         local en_file=$xlat_dir/en/$domain.xlat
         local count=0 langs= lang po_file cmd mo_file
         for po_file in $tdir/*.po; do
@@ -192,7 +194,7 @@ main() {
                 pretend mkdir -p $(dirname $mo_file)
                 pretend msgfmt -o $mo_file $po_file && mo_count=$((mo_count + 1))
             fi
-            
+
             stop_after mo && continue
 
             [ "$MO_ONLY" ] && continue
@@ -207,9 +209,15 @@ main() {
             if not_skip_or_older xlat $xlat_file $str_maker $mo_file; then
                 vsay "  > $xlat_file"
                 pretend mkdir -p $(dirname $xlat_file)
-                [ -z "$PRETEND" ] && LANGUAGE=$lang $str_maker | sort -u  | comm -23 - $en_file > $xlat_file
+
+                [ -z "$PRETEND" -a -z "$FULL" ] \
+                    && LANGUAGE=$lang $str_maker | sort -u  | comm -23 - $en_file > $xlat_file
+
+                [ -z "$PRETEND" -a -n "$FULL" ] \
+                    && LANGUAGE=$lang $str_maker | sort -u > $xlat_file
+
                 [ -n "$PRETEND" -a -n "$VERY_VERBOSE" ] \
-                    && echo "LANGUAGE=$lang $str_maker | sort -u | comm -3 - $en_file > $xlat_file"
+                    && echo "LANGUAGE=$lang $str_maker | sort -u | comm -23 - $en_file > $xlat_file"
                 xlat_count=$((xlat_count + 1))
             fi
 
@@ -231,7 +239,7 @@ main() {
         sayp $xlat_count "Created %n .xlat file%s" $xlat_count
     fi
 }
-    
+
 
 prep_xlat() {
     local domain=$1  name=$2
@@ -247,15 +255,16 @@ prep_xlat() {
         && continue
 
     local init_opt bin_dir src_dir=$(dirname $src_file)
-    src_dir=${src_dir#Src/}
+    src_dir=${src_dir#$SRC_DIR/}
     case $src_dir/ in
         initrd/*) bin_dir=$INITRD_DIR${src_dir#initrd}                ;;
           sqfs/*) bin_dir=$OUTPUT_DIR${src_dir#sqfs}                  ;;
         *) warn "Unrecognized source directory: $src_dir" && continue ;;
     esac
 
-    [ $domain = init ] && init_opt="--init"
-    
+
+    [ -z "${src_file##$SRC_DIR/initrd/*}" ] && init_opt=--init
+
     local bin_file=$bin_dir/$domain
     if not_skip_or_older replace $bin_file $src_file; then
         vsay "> $bin_file"
@@ -300,7 +309,7 @@ prep_xlat() {
 
     [ -x $FIX_HEADER ] && pretend $CMD_FIX_HEADER -q $pot_file
     fi
-  
+
     stop_after pot && continue
 }
 
