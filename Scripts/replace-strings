@@ -26,7 +26,7 @@ replaces them with a variable with a similar name.  In addition, can
 create a strings file that is a shell script that assigns the string
 back to the variable.  There are two different algorithms for choosing
 the strings.  The first (default) uses keywords that preceed the
-string.  
+string.
 
 The second (--init) is based on the content of the string. The string
 must be preceeded by at a space (not an equal sign). The can
@@ -64,7 +64,7 @@ GetOptions(
     "output=s"     => \$OUT_FILE,
     "quiet"        => \$QUIET,
     "STOP=s"       => \$STOP_WORDS,
-    "up"           => \$UP, 
+    "up"           => \$UP,
     "verbose"      => \$VERBOSE,
 ) or die $USAGE;
 
@@ -92,7 +92,7 @@ $OUT_FILE and do {
     my $odir = $OUT_FILE;
     $odir =~ s{/[^/]+$}{};
     $odir ne $OUT_FILE and system('mkdir', '-p', $odir);
-    open my $OUT_HANDLE, ">", "$OUT_FILE" 
+    open my $OUT_HANDLE, ">", "$OUT_FILE"
         or die "Could not open $OUT_FILE for output: $!\n";
     select $OUT_HANDLE;
 };
@@ -104,7 +104,7 @@ export TEXTDOMAIN=$DOMAIN
 
 PREAMBLE
 
-$INIT_FORMAT and $STOP_WORDS ||= "db_msg,breakpoint,vmsg_if";
+$INIT_FORMAT and $STOP_WORDS ||= "log,db_msg,breakpoint,vmsg_if";
 $STOP_WORDS ||= "#";
 
 my $STOP_REGEX = "^\\s*(:?#|" . join("|", split ",", $STOP_WORDS) . ")";
@@ -153,9 +153,28 @@ for my $label (@LABELS) {
     }
 
     else {
-        my $len = $str =~ m/^ / ? length $str : "";
-        $str =~ s/^\s+//;
-        $fmt = qq{printf "\%s=\\"%\%${len}s\\"\\n" "\$(gettext "\%s")"\n};
+        if ( $str =~ m/^ /) {
+            my $len = length $str;
+            $str =~ s/^\s+//;
+            print <<Unicode_printf;
+xxx=\$(gettext "$str")
+len=\$(echo -n "\$xxx" | wc -m)
+pad=\$(($len - \$len))
+[ \$pad -lt 0 ] && pad=0
+space=\$(printf "%\${pad}s" "")
+echo "$label=\\"\$space\$xxx\\""
+
+Unicode_printf
+            next;
+        }
+
+        else {
+            $fmt = qq{printf "\%s=\\"%\%s\\"\\n" "\$(gettext "\%s")"\n};
+        }
+
+        #my $len = $str =~ m/^ / ? length $str : "";
+        #$str =~ s/^\s+//;
+        #$fmt = qq{printf "\%s=\\"%\%${len}s\\"\\n" "\$(gettext "\%s")"\n};
     }
 
     printf $fmt, $label, $str;
@@ -178,7 +197,7 @@ sub replace_string {
     $label =~ s/'//g;
     $label =~ s/[^\s\w]+/ /g;
     #$label =~ s/^[\s]+|[\s+]$//;
-    $label =~ s/^[_\s]+|[_\s+]$//;
+    $label =~ s/^[_\s]+|[_\s]+$//;
     #$label =~ s/[\s+]/_/g;
     $label =~ s/[_\s]+/_/g;
     $label = "_${label}_";
