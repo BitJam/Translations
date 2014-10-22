@@ -21,10 +21,11 @@ space_DESKTOPS=fluxbox,icewm,jwm
       FF_PREFS="/etc/skel/.mozilla/firefox/*/prefs.js"
       INIT_OUT=/live/config/init.out
 AUTOMOUNT=
+
 #-jbb For debugging
 CMDLINE=${CMDLINE:-$(cat /proc/cmdline)}
-value=${param#*=}
 for param in $CMDLINE; do
+    value=${param#*=}
     case "$param" in
              desktop=*)  CMD_DESKTOP=$value                         ;;
                  dpi=*)      CMD_DPI=$value                         ;;
