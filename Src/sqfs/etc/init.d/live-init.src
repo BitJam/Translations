@@ -402,8 +402,10 @@ automount_and_fstab() {
             error "Invalid %s option %s" 'mount/automount' $(pquote $CMD_MOUNT)
     esac
 
-    #echo_live "Building %s via %s" "$(pquote /etc/fstab)" "$(pquote "make-fstab $fstab_opt")"
-    grep -q -e ^/dev -e ^UUID= -e ^LABEL=  /etc/fstab || rm /etc/fstab
+    if [ -e /etc/fstab  ]; then
+        grep -q -e ^/dev -e ^UUID= -e ^LABEL=  /etc/fstab || rm /etc/fstab
+    fi
+
     make-fstab $fstab_opt
 
     [ "$AUTOMOUNT" ] && touch $am_file
