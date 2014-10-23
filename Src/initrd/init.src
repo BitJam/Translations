@@ -20,8 +20,8 @@
               DEVELOPER="BitJam"
   DISTRO_BUG_REPORT_URL="http://antix.freeforums.org"
 
-        RETRY_TIME=5
-     PERSIST_RETRY=5
+        RETRY_TIME=10
+     PERSIST_RETRY=10
 
            RW_MODE="ro"
        DISTRO_NAME="Linux"
