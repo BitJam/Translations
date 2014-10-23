@@ -276,17 +276,11 @@ main_core() {
     ORIG_SQFILE_DIR=$SQFILE_PATH
     ORIG_SQFILE_FULL=$ORIG_SQFILE_DIR/$SQFILE_NAME
 
-    mount -o remount,rw $SQFILE_DEV 2>/dev/null
-    dir_has_param "$SQFILE_MP" rw || REMASTERABLE=
-    [ "$REMASTERABLE" ] && do_remaster "$SQFILE_FULL"
-
     # Check md5 of files in directory containing linuxfs file
     # 'fromiso' causes us to check md5sums in two places
     [ "$CHECK_MD5" ] && check_md5 $SQFILE_DIR
 
     [ "$TO_RAM" ] && copy_to_ram "$SQFILE_FULL" $TORAM_MP
-
-    breakpoint 6 "after copy to ram"
 
     check_kernel_version $SQFS_MP
 
