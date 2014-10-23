@@ -55,7 +55,7 @@
 
      MAX_MOUNT_CNT=30
        RETRY_DELAY=50               # in hundredths of a second
-           VERBOSE=5
+           VERBOSE=4
 
         DO_HOTPLUG=true
         LOAD_FIRST="usb-common usbcore ehci-hcd fusbh200-hcd fotg210-hcd"
@@ -237,8 +237,12 @@ main_core() {
     [ "$DID_ISO" ] && REMASTERABLE=
 
     BOOT_UUID=$(device_uuid $SQFILE_DEV)
-    msg "boot device uuid: $BOOT_UUID"
+    vmsg 6 "boot device uuid: $BOOT_UUID"
     breakpoint 3 "after mounting boot device"
+
+    mount -o remount,rw $SQFILE_DEV 2>/dev/null
+    dir_has_param "$SQFILE_MP" rw || REMASTERABLE=
+    [ "$REMASTERABLE" ] && do_remaster "$SQFILE_FULL"
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
 
@@ -1103,7 +1107,7 @@ _find_files() {
 
             #. Scan <type> devices for <type> file(s) <file names>
             [ "$try" = "0" ] \
-                && vmsg 4 "Scan %s devices.  Look for %s file(s) %s"  $(dq $FROM_TYPE) $find_type "$(fq $short_files)"
+                && vmsg 5 "Scan %s devices.  Look for %s file(s) %s"  $(dq $FROM_TYPE) $find_type "$(fq $short_files)"
 
             DEVICE_LIST=$(most_block_devices)
 
@@ -1175,7 +1179,7 @@ _find_files() {
             if [ -z "$have_devices" ]; then
                 [ "$try" != "0" ] && msg
                 #. Look for files(s) <file-list> on device(s) <device list>
-                vmsg 4 "Look for file(s) %s on device(s) %s" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
+                vmsg 5 "Look for file(s) %s on device(s) %s" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
             else
                 #vmsg_if $vthresh
                 vmsg_if $vthresh "%s Look for %s on %s" "$cnt_up" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
@@ -1225,7 +1229,7 @@ _find_files() {
                 [ -f "$mntpnt/$fname" ] || continue
                 if [ "$mntpnt" = "$mp_orig" ]; then
                     #. Mounted <type> <device> at <mount point>
-                    vmsg 4 "Mounted %s device. Mounted device %s at %s" \
+                    vmsg 5 "Mounted %s device. Mounted device %s at %s" \
                         $find_type "$(fq $dev)" "${to_co}$mntpnt${m_co}"
 
                     #. <type> device filesystem: <filesystem-name>
