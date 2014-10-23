@@ -169,7 +169,7 @@ main_wrapper() {
     breakpoint 9 "right before starting init"
 
     # re-enable console screen blanking at 15 minutes
-    printf "\e[9;15]\e[14;15]"
+    # printf "\e[9;15]\e[14;15]"
 
     if find_init_prog INIT_PROG $NEW_ROOT; then
 
