@@ -89,14 +89,14 @@ save_desktop() {
 
         get_init_param BOOT_UUID
         if [ -z "$BOOT_UUID" ; then
-            echo "Could not find UUID of boot device for remounting"
-            echo "Will not save defaults desktops"
+            echo_live "Could not find UUID of boot device for remounting"
+            echo_live "Will not save defaults desktops"
             return
         fi
         mkdir -p /live/boot-dev/
         if ! mount -U $BOOT_UUID /live/boot-dev; then
-            echo "Could not remount boot device"
-            echo "Will not save defaults desktops"
+            echo_live "Could not remount boot device"
+            echo_live "Will not save defaults desktops"
             return
         fi
     fi
@@ -109,11 +109,10 @@ save_desktop() {
         from="/home/$user/.desktop-session/default-desktop"
         [ -e "$from" ] || continue
         to="$to_dir/$user/default-desktop"
-        echo "maybe save $user desktop"
         should_copy "$from" "$to" || continue
         mkdir -p $(dirname "$to")
+        echo_live "Save %s desktop %s" $(pquote $user) $(pquote cat $sorc)
         cp "$from" "$to"
-        echo "save $user desktop"
     done
 }
 
@@ -154,9 +153,8 @@ restore_desktop() {
         [ -d "$dest_dir" ] || continue
         [ -e "$sorc"     ] || continue
         local dest=$dest_dir/default-desktop
-        echo "maybe restore $user desktop"
         should_copy $sorc $dest || continue
-        echo "restore $user desktop"
+        echo_live "restore %s desktop to %s" $(pquote $user) $(pquote cat $sorc)
         cp "$sorc" "$dest"
         chown $user:users $dest
     done
