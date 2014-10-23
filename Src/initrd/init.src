@@ -15,16 +15,16 @@
 #              _FULL   absolute mountpoint and path and filename
 #              _DIR    varies
 
-           VERSION="7.00.01"
-      VERSION_DATE="Sat May 24 21:46:28 MDT 2014"
-         DEVELOPER="BitJam"
-         DEV_EMAIL="http://antix.freeforums.org"
+                VERSION="7.10.02"
+           VERSION_DATE="Thu Oct 16 17:50:11 MDT 2014"
+              DEVELOPER="BitJam"
+  DISTRO_BUG_REPORT_URL="http://antix.freeforums.org"
 
         RETRY_TIME=5
      PERSIST_RETRY=5
 
            RW_MODE="ro"
-            DISTRO="Linux"
+       DISTRO_NAME="Linux"
             PRINTK=0
 
           LIVE_DIR="/live"
@@ -37,7 +37,6 @@
        MIN_SYS_RAM=80
       MIN_AUFS_RAM=80
 
-       DISTRO_FILE="/init.conf"
            LOG_DIR="/var/log/live"
           LOG_FILE="$LOG_DIR/bootstrap.log"
 
@@ -66,6 +65,9 @@
 
           USE_MDEV=
            DO_LOAD=
+
+    DEFAULT_SQFILE=/antiX/linuxfs
+  DEFAULT_ISO_FILE=/antiX/antiX.iso
 
   LIVE_X64_LD_PATH="/lib:/lib/x86_64-linux-gnu:/usr/lib"
   LIVE_386_LD_PATH="/lib:/lib/i386-linux-gnu:/usr/lib"
@@ -209,7 +211,7 @@ main_core() {
     start_hotplug "$DO_HOTPLUG" "$TRACE_LOAD"
     load_kernel_modules "$DO_LOAD" "$MODULE_LIST"
 
-    do_welcome "$DISTRO" "$DISTRO_VERSION" "$DISTRO_CODENAME" "$VERSION" "$VERSION_DATE"
+    do_welcome "$DISTRO_PRETTY_NAME" "$VERSION" "$VERSION_DATE"
 
     show_bootcodes "$UNKNOWN_BOOTCODES"
     show_integer_errors "$INTEGER_ERRORS"
@@ -353,6 +355,12 @@ make_nodes() {
     [ -e $dir/tty0    ] || mknod $dir/tty0    c 4 0
 }
 
+read_distro_release() {
+    local file=$1
+    sed -r -n 's/^\s*([A-Z0-9_]+=)/DISTRO_\1/p' $file
+    eval $(sed -r -n 's/^\s*([A-Z0-9_]+=)/DISTRO_\1/p' $file)
+}
+
 #------------------------------------------------------------------------------
 # Function read_cmdline_params
 #
@@ -392,8 +400,8 @@ read_cmdline_params()
                           dbv=*) DBV=$value ;;
                         fneed=*) FRUGAL_NEEDED=$value                            ;;
                          fforce) FORCE_FRUGAL=true                               ;;
-                         frugal) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true    ;;
-                       frugal=*) FRUGAL_ID=label=$DISTRO-Frugal ; FRUGAL=true  ; PERSIST=$value ;;
+                         frugal) FRUGAL_ID=label=$DISTRO_NAME-Frugal ; FRUGAL=true                   ;;
+                       frugal=*) FRUGAL_ID=label=$DISTRO_NAME-Frugal ; FRUGAL=true  ; PERSIST=$value ;;
                          flab=*) FRUGAL_ID=label=$value         ; FRUGAL=        ;;
                          fdev=*) FRUGAL_ID=name=$value          ; FRUGAL=        ;;
                         fuuid=*) FRUGAL_ID=uuid=$value          ; FRUGAL=        ;;
@@ -611,7 +619,7 @@ read_cmdline_params()
         nosplash|splash=*|fbcon=*);;
 
         #----------------------------------------------------------------------
-        # NOTE: see /live/custom/$DISTRO/1.sh for distro specific boot codes
+        # NOTE: see /live/custom/$DISTRO_NAME/1.sh for distro specific boot codes
         #----------------------------------------------------------------------
 
         *) UNKNOWN_BOOTCODES="$UNKNOWN_BOOTCODES $param"
@@ -808,7 +816,7 @@ disable_hcd() {
 }
 
 load_kernel_modules() {
-    local module  do_load=$1  list=$2  file=$CUSTOM_DIR/$DISTRO/modules.load
+    local module  do_load=$1  list=$2  file=$CUSTOM_DIR/$DISTRO_NAME/modules.load
 
     depmod &>/dev/null
 
@@ -1303,7 +1311,7 @@ frugal_error() {
 }
 
 find_frugal_file() {
-    local frugal_id=$1  bdir=$DISTRO-Frugal-$(uname -r)
+    local frugal_id=$1  bdir=$DISTRO_NAME-Frugal-$(uname -r)
     local sqfile=$bdir/$SQFILE_NAME need_to_ask
     local device name=${frugal_id%%=*}  value=${frugal_id#*=}
 
@@ -1383,7 +1391,7 @@ find_frugal_file() {
 
         [ -z "$device" -o "$device" = "quit" ] && return 1
 
-        [ "$FRUGAL" ] && label_device $device "$DISTRO-Frugal"
+        [ "$FRUGAL" ] && label_device $device "$DISTRO_NAME-Frugal"
     fi
 
     if ! mkdir -p $FRUGAL_MP; then
@@ -1515,7 +1523,7 @@ linuxfs_error() {
         "$(printf "       Searched types: %s" "${hi_co}$FROM_TYPE")"   \
         "$(printf "    All block devices: %s" "${hi_co}$all_devices")" \
         "" \
-        "$(printf "Please contact %s at %s" "$DEVELOPER" "$DEV_EMAIL")"
+        "$(printf "Please contact %s at %s" "$DEVELOPER" "$DISTRO_BUG_REPORT_URL")"
 }
 
 check_kernel_version() {
@@ -1831,7 +1839,7 @@ should_break_at() {
 custom_code() {
     local file=$1  desc=$2
 
-    [ "${#file}" -eq 1 ] && file=$CUSTOM_DIR/$DISTRO/$file.sh
+    [ "${#file}" -eq 1 ] && file=$CUSTOM_DIR/$DISTRO_NAME/$file.sh
 
     [ -r $file ] || return
 
@@ -3057,7 +3065,7 @@ prepare_persistence() {
     # persist label if persist device was not explicitly given
     [ -z "$REMASTERABLE" -a -n "$NEED_PERSIST" ] || return
 
-    AUTO_PERSIST="$DISTRO-Persist"
+    AUTO_PERSIST="$DISTRO_NAME-Persist"
     warn
     warn "Persistence was requested on a read-only boot device"
     warn "Will search for a persistence device with the label %s" "$(pqw $AUTO_PERSIST)"
@@ -3741,10 +3749,10 @@ DF_ROOTFS="$DF_ROOTFS"
 DID_REMASTER="$DID_REMASTER"
 DID_ROLLBACK="$DID_ROLLBACK"
 DID_TORAM="$DID_TORAM"
-DISTRO="$DISTRO"
+DISTRO="$DISTRO_NAME"
 DISTRO_CODENAME="$DISTRO_CODENAME"
 DISTRO_VERSION="$DISTRO_VERSION"
-FULL_DISTRO="$DISTRO-$DISTRO_VERSION"
+FULL_DISTRO="$DISTRO_NAME-$DISTRO_VERSION"
 LINUXRC_VERSION="$VERSION"
 LINUXRC_DATE="$VERSION_DATE"
 LIVE_DIR="$FINAL_DIR"
@@ -3799,10 +3807,10 @@ DF_ROOTFS="$DF_ROOTFS"
 DID_REMASTER="$DID_REMASTER"
 DID_ROLLBACK="$DID_ROLLBACK"
 DID_TORAM="$DID_TORAM"
-DISTRO="$DISTRO"
+DISTRO="$DISTRO_NAME"
 DISTRO_CODENAME="$DISTRO_CODENAME"
 DISTRO_VERSION="$DISTRO_VERSION"
-FULL_DISTRO="$DISTRO-$DISTRO_VERSION"
+FULL_DISTRO="$DISTRO_NAME-$DISTRO_VERSION"
 LINUXRC_VERSION="$VERSION"
 LINUXRC_DATE="$VERSION_DATE"
 PERSISTENCE="$PERSISTENCE"
