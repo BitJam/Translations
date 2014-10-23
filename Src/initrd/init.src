@@ -2714,7 +2714,10 @@ check_md5()
         vmsg_nc 1 "           file: %s" "${nc_co}$fname $size_str"
         fcnt=$(( fcnt + 1 ))
         true_md5="$(head -n 1 $md5_file | cut -d" " -f1)"
-        file_md5="$(cat $file | pipe_progress | md5sum | cut -d" " -f1)"
+
+        # FIXME? no marching dots???
+        #file_md5="$(cat $file | pipe_progress | md5sum | cut -d" " -f1)"
+        file_md5=$(cat $file | md5sum | cut -d" " -f1) 2>&1
 
         if [ "$file_md5" == "$true_md5" ]; then
             vmsg_nc 1 "         result: %s" "${ok_co}$passed"
