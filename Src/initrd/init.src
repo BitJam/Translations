@@ -1678,11 +1678,10 @@ try_file_mount() {
 # Function: mount_tmpfs <mountpoint> <size> <name> <mode>
 #------------------------------------------------------------------------------
 mount_tmpfs() {
-    local mp=$1  size=$2  name=$3  mode=$4
+    local mp=$1  size=$2  name=$3  opts=${4+,}$4
     mkdir -p $mp
     vmsg 6 "Create %s at %s" "${hi_co}$name tmpfs${m_co}" "$(fq $mp) (${num_co}$size ${m_co}MB)"
-    log_cmd $LIVE_BIN/mount -t tmpfs -o size=${size}m tmpfs $mp || return 1
-    [ "$mode" ] && chmod $mode $mp
+    log_cmd $LIVE_BIN/mount -t tmpfs -o size=${size}m$opts tmpfs $mp || return 1
     return 0
 }
 
@@ -3927,10 +3926,30 @@ find_init_prog() {
     return 0
 }
 
+run_init_scripts() {
+    local new_root=$1
+
+    mkdir -p $new_root/etc/live/protect $new_root/run/lock
+
+    PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/live/bin
+
+    local script
+    for script in $LIVE_SCRIPTS; do
+        chroot $new_root /etc/init.d/$script start
+        rm -f $new_root/etc/rc?.d/S*$script
+    done
+
+    PATH=$LIVE_BIN
+}
+
+
 prepare_switch_root() {
     local new_root=$1  live_dir=$2  final_live=$3
 
     local new_live=$new_root${final_live:-$live_dir}
+
+    # FIXME!
+    # new_live=$new_root/run/initramfs
 
     # Now tell kernel where the real modprobe lives
     echo "/sbin/modprobe" > /proc/sys/kernel/modprobe
@@ -3938,7 +3957,13 @@ prepare_switch_root() {
     # Avoid PID wrap by setting a large max
     echo 4000000 > /proc/sys/kernel/pid_max 2>/dev/null
 
-    mount_tmpfs $new_live 10 $live_dir 755
+    mount_tmpfs $new_root/run 10 /run mode=755,nodev
+    mount_tmpfs $new_live 10 $live_dir mode=755
+
+    ln -s . $new_live/live
+
+    cp -a /bin/shutdown $new_live/
+    mkdir -p $new_live/oldroot
 
     local mp new
     for mp in $live_dir/*; do
