@@ -488,7 +488,7 @@ read_cmdline_params()
         video.*);;
 
         # Most kernel codes from version 3.8
-        forcepae);;
+        forcepae|systemd.*);;
         acpi=*|acpi_rsdp=*|acpi_apic_instance=*|acpi_backlight=*);;
         acpi.debug_layer=*|acpi.debug_level=*|acpi_irq_balance);;
         acpi_irq_nobalance|acpi_irq_isa=*|acpi_irq_pci=*|acpi_no_auto_ssdt);;
@@ -3599,6 +3599,23 @@ auto_login() {
     local dir file full prog=$1  terms=$2 root=$3
     [ -n "$prog" -a -n "$terms" ] || return
 
+    if [ "$SYSTEM_D" ]; then
+        db_msg "Enable autologin"
+        local term dir sysd_dir=$root/etc/systemd/system
+        [ -d $sysd_dir ] || return
+        for term in 2 3 4 5; do
+            dir=$sysd_dir/getty@tty$term.service.d/
+            mkdir -p $dir
+            cat << AutoLogin > $dir/autologin.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear %I 38400 linux
+AutoLogin
+        done
+        return
+    fi
+
+    # FIXME: does getty have --autologin now??
     for dir in /sbin /bin /usr/sbin /usr/bin /usr/local/bin ; do
         file=$dir/$prog
         full=$root/$file
