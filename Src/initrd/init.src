@@ -745,13 +745,9 @@ do_welcome() {
 
     [ "$NO_CLEAR" ] || clear   # Clear and reset screen
 
-    local distro=$1  d_version=$2  d_codename=$3  version=$4  v_date=$5
-    local welcome_name
+    local pretty_name=$1 version=$2  v_date=$3
 
-    welcome_name=$distro
-    [ "$d_version" ]  && welcome_name="$welcome_name-$d_version"
-    [ "$d_codename" ] && welcome_name="$welcome_name${hi_co} $d_codename"
-    vmsg 2 "Welcome to %s" "$(pq $welcome_name)!"
+    vmsg 2 "Welcome to %s" "$(pq $(uname -m) $pretty_name)!"
 
     # Get total ramsize, and available real ram in MB. We need this later.
 
