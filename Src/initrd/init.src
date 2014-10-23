@@ -124,23 +124,16 @@ main_wrapper() {
     trap "" 1   2   3    11   15
 
     umask 022
-    mkdir -p /proc /sys /dev
 
-    mount -t proc   proc  /proc
-    mount -t sysfs  sys   /sys
-
+    system_mount
     local time_0=$(cut -d" " -f22 /proc/$$/stat)
 
     make_nodes /dev
 
-    custom_code $DISTRO_FILE
+    read_distro_release /etc/initrd-release
     custom_code 0 'before reading boot codes'
 
     read_cmdline_params
-
-    [ -z "$USE_MDEV" ] && mount -t devtmpfs devtmpfs /dev
-    mkdir -p /dev/pts
-    mount -t devpts devpts /dev/pts
 
     FREE_MEM=$(mem_info MemFree)
 
@@ -338,13 +331,31 @@ main_core() {
     local dt=$((time_1 - time_0))
 
     vmsg 6
-    vmsg 4 "The %s program took %s seconds" $0 $(nq $(get_seconds $dt))
+    vmsg 5 "The %s program took %s seconds" $0 $(nq $(get_seconds $dt))
     vmsg 6 $hbar
+
+    breakpoint 8 "before running init.d scripts"
+
+    run_init_scripts $NEW_ROOT
 }
 
 #------------------------------------------------------------------------------
 # Getting started
 #------------------------------------------------------------------------------
+
+system_mount() {
+    dir=$1
+
+    mkdir -p $dir/proc $dir/sys $dir/dev
+
+    mount -t proc   proc  $dir/proc
+    mount -t sysfs  sys   $dir/sys
+
+    mount -t devtmpfs devtmpfs $dir/dev
+    mkdir -p $dir/dev/pts
+    mount -t devpts devpts $dir/dev/pts
+}
+
 
 make_nodes() {
     local dir=$1
