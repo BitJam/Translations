@@ -79,6 +79,8 @@ MKFS_FREE_MARGIN=20
          MKFS_SIZES="65 100 150 200 250 375 500 750 1000 1500 2000 2500 3000 4000"
       MAX_MKFS_SIZE=${MKFS_SIZES##* }
 
+      LIVE_SCRIPTS="live-L10n live-init persist-password persist-autosave"
+
 set_live_dirs() {
     local dir=$1
 
@@ -149,6 +151,9 @@ main_wrapper() {
 
     SCREEN_WIDTH=$(stty size 2>/dev/null | cut -d" " -f2)
 
+    [ -z "${FINAL_DIR##/*}" ] || FINAL_DIR="/$FINAL_DIR"
+    NEW_ROOT=$AUFS_MP
+
     if [ "$NO_ERR_LOG" ]; then
         main_core
     else
@@ -156,10 +161,8 @@ main_wrapper() {
             | sed -e "s/^/${yellow}Error: $red/" -e "s/$/$nc_co/" | tee -a $MY_LOG; done
     fi
 
-    # Nota Bene: when error log is enabled,  main_core() runs in a subshell
+    # Nota Bene: when error log is enabled, main_core() runs in a subshell
     # so it cannot affect our variables.
-
-    NEW_ROOT=$AUFS_MP
 
     write_log_files $MY_LOG $NEW_ROOT/$LOG_FILE
 
@@ -302,10 +305,13 @@ main_core() {
 
     mount_aufs "$AUFS_MP" "$SQFS_MP" "$AUFS_RAM_MP" "$ROOTFS_MP"
 
-    NEW_ROOT=$AUFS_MP
+    SYSTEM_D=
+    local sbin_init=$(readlink $NEW_ROOT/sbin/init)
+    [ -n "$sbin_init" -a -z "${sbin_init##*systemd}" ] && SYSTEM_D=true
+    [ "$SYSTEM_D" ] && msg "Detected systemd init system"
 
     [ "$USE_MDEV" ] && mdev -s
-    breakpoint 7 "after mounting aufs"
+    breakpoint 6 "after mounting aufs"
 
     [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
 
@@ -314,7 +320,6 @@ main_core() {
     else
         [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" "$(pqh home!)"
     fi
-
 
     [ "$DELAYED_UMOUNT" ] && log_cmd umount -l $DELAYED_UMOUNT
 
@@ -325,9 +330,9 @@ main_core() {
     write_output_files     $OUTPUT_DIR
     old_write_output_files $OUTPUT_DIR
 
-    breakpoint 8 "before prepare switch_root"
+    #chroot $SQFS_MP /usr/bin/lspci -v >> $MY_LOG
 
-    [ -z "${FINAL_DIR##/*}" ] || FINAL_DIR="/$FINAL_DIR"
+    breakpoint 7 "before prepare switch_root"
 
     prepare_switch_root $NEW_ROOT $LIVE_DIR $FINAL_DIR
 
@@ -3955,9 +3960,7 @@ prepare_switch_root() {
         cp -a $old/* $new
     done
 
-    mkdir -p $new_root/dev
-    [ -z "$USE_MDEV" ] && log_cmd mount -t devtmpfs devtmpfs $new_root/dev
-    mountpoint -q $new_root/dev || make_nodes $new_root/dev
+    system_mount $new_root
 
     umount /dev/pts
 
