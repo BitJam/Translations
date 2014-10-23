@@ -196,12 +196,6 @@ main_core() {
 
     select_breakpoints
 
-    if [ "$DO_MDEV" ]; then
-        vmsg 6 'Populate %s with %s' $(dq /dev) $(cq mdev)
-    else
-        vmsg 6 'Populate %s with %s' $(dq /dev) $(cq devtmpfs)
-    fi
-
     breakpoint 1 "before loading modules"
 
     start_hotplug "$DO_HOTPLUG" "$TRACE_LOAD"
