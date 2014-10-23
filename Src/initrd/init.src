@@ -58,7 +58,7 @@
            VERBOSE=5
 
         DO_HOTPLUG=true
-        LOAD_FIRST="usb_common usbcore ehci-hcd"
+        LOAD_FIRST="usb-common usbcore ehci-hcd fusbh200-hcd fotg210-hcd"
 
           VID_NAME=VID
       LINUXFS_NAME=linuxfs
