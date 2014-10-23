@@ -16,8 +16,8 @@ INITRD_XLAT_DIR := $(INITRD_DIR)/live/locale/xlat
 STR_MAKER_DIR   := string-maker
 MO_DIR          := $(OUT_DIR)/usr/share/locale
 
-STD_OPTS        := --outdir=$(OUT_DIR)
 SCRIPT_DIR      := Scripts
+STD_OPTS        := --outdir=$(OUT_DIR)
 CMD_MAKE_XLAT   := $(SCRIPT_DIR)/make-xlat-files $(STD_OPTS)
 CMD_MAKE_MO     := $(SCRIPT_DIR)/make-xlat-files --mo-only $(STD_OPTS)
 CMD_MAKE_MO     += --domains $(DOMAINS_FILE)
