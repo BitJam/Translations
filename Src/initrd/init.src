@@ -829,8 +829,11 @@ disable_hcd() {
 load_kernel_modules() {
     local no_load=$1 do_load=$2  file=$CUSTOM_DIR/$DISTRO_NAME/modules.load
 
-    no_load=$(echo $no_load | sed 's/VIDEO/nouveau,nvidia,i915,radeon/');
-    echo $no_load | sed 's/,/\n/g' >> /etc/modprobe.d/initrd.conf
+    if [ "$no_load" ]; then
+        no_load=$(echo $no_load | sed 's/VIDEO/nouveau,nvidia,i915,radeon/');
+        mkdir -p /etc/modprobe.d/
+        echo $no_load | sed 's/,/\n/g' | sed -r 's/^([a-z])/blacklist \1/' >> /etc/modprobe.d/initrd.conf
+    fi
 
     [ "$DISABLE_LOAD" ] && return
 
