@@ -872,9 +872,9 @@ autoload_modules() {
     [ "$verb" ] && vmsg $verb "Load hardware specific modules"
     for alias in $(find /sys/devices -name modalias -print0 | xargs -0 cat 2>/dev/null| sort -u); do
         $LIVE_BIN/modprobe -q -b $alias &>/dev/null
-        #[ "$TRACE_LOAD" ] && echo $alias >> /live/config/auto-load.out
+        #[ "$TRACE_LOAD" ] && echo $alias >> /live/config/auto-load.log
         local log_file=/live/config/auto-load.log
-        grep "^$alias$" $log_file || echo $alias >> $log_file
+        grep -q "^$alias$" $log_file 2>/dev/null || echo $alias >> $log_file
     done
 }
 
