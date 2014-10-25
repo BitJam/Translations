@@ -170,7 +170,7 @@ main_wrapper() {
     breakpoint 9 "right before starting init"
 
     # re-enable console screen blanking at 15 minutes
-    # printf "\e[9;15]\e[14;15]"
+    [ "$VT_BLANK" ] && printf "\e[9;$VT_BLANK]\e[14;$VT_BLANK]"
 
     if find_init_prog INIT_PROG $NEW_ROOT; then
 
@@ -478,6 +478,8 @@ read_cmdline_params()
                         errtest) TEST_ERRORS=true                                ;;
                       errtest=*) TEST_FATAL=$value                               ;;
                         noerr=*) NO_ERROR=$value                                 ;;
+
+                      vtblank=*) valid_int VT_BLANK $param                       ;;
 
                livedir=*|ldir=*) FINAL_DIR=$value                                ;;
 
