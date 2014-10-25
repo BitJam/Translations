@@ -327,13 +327,18 @@ main_core() {
     local time_1=$(get_time)
     local dt=$((time_1 - time_0))
 
+    breakpoint 8 "before running init.d scripts"
+
+    # FIXME remove after squashfs gets updated
+    local f
+    for f in halt reboot; do
+        rm -f $NEW_ROOT/usr/local/bin/$f
+    done
+
+    run_init_scripts $NEW_ROOT
     vmsg 6
     vmsg 5 "The %s program took %s seconds" $0 $(nq $(get_seconds $dt))
     vmsg 6 $hbar
-
-    breakpoint 8 "before running init.d scripts"
-
-    run_init_scripts $NEW_ROOT
 }
 
 #------------------------------------------------------------------------------
