@@ -1160,7 +1160,7 @@ _find_files() {
             if [ -z "$have_devices" ]; then
                 [ "$try" != "0" ] && msg
                 #. Look for files(s) <file-list> on device(s) <device list>
-                vmsg 5 "Look for file(s) %s on device(s) %s" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
+                vmsg 4 "Look for file(s) %s on device(s) %s" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
             else
                 #vmsg_if $vthresh
                 vmsg_if $vthresh "%s Look for %s on %s" "$cnt_up" "$(pq $short_files)" "$(dq $DEVICE_LIST)"
@@ -1210,7 +1210,7 @@ _find_files() {
                 [ -f "$mntpnt/$fname" ] || continue
                 if [ "$mntpnt" = "$mp_orig" ]; then
                     #. Mounted <type> <device> at <mount point>
-                    vmsg 5 "Mounted %s device. Mounted device %s at %s" \
+                    vmsg 4 "Mounted %s device. Mounted device %s at %s" \
                         $find_type "$(fq $dev)" "${to_co}$mntpnt${m_co}"
 
                     #. <type> device filesystem: <filesystem-name>
