@@ -63,8 +63,9 @@
           VID_NAME=VID
       LINUXFS_NAME=linuxfs
 
-          USE_MDEV=
+           NO_LOAD=
            DO_LOAD=
+      DISABLE_LOAD=
 
     DEFAULT_SQFILE=/antiX/linuxfs
   DEFAULT_ISO_FILE=/antiX/antiX.iso
@@ -199,7 +200,7 @@ main_core() {
     breakpoint 1 "before loading modules"
 
     start_hotplug "$DO_HOTPLUG" "$TRACE_LOAD"
-    load_kernel_modules "$DO_LOAD" "$MODULE_LIST"
+    load_kernel_modules "$NO_LOAD" "$DO_LOAD"
 
     do_welcome "$DISTRO_PRETTY_NAME" "$VERSION" "$VERSION_DATE"
 
@@ -298,7 +299,6 @@ main_core() {
     [ -n "$sbin_init" -a -z "${sbin_init##*systemd}" ] && SYSTEM_D=true
     [ "$SYSTEM_D" ] && msg "Detected systemd init system"
 
-    [ "$USE_MDEV" ] && mdev -s
     breakpoint 6 "after mounting aufs"
 
     [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
@@ -455,9 +455,11 @@ read_cmdline_params()
                         checkfs) FORCE_FSCK=true                                 ;;
                       nocheckfs) DO_FSCK=                                        ;;
 
-                         load=*) MODULE_LIST=$MODULE_LIST,$value                 ;;
-                           load) DO_LOAD=true                                    ;;
-                         noload) DO_LOAD=                                        ;;
+#                         load=*) MODULE_LIST=$MODULE_LIST,$value                 ;;
+#                           load) DO_LOAD=true                                    ;;
+#                         noload) DO_LOAD=                                        ;;
+                          noload) DISABLE_LOAD=true                              ;;
+                        noload=*) NO_LOAD=$NO_LOAD,$value                        ;;
 
                       nohotplug) DO_HOTPLUG=                                     ;;
                       traceload) TRACE_LOAD=true                                 ;;
@@ -472,8 +474,6 @@ read_cmdline_params()
                       errtest=*) TEST_FATAL=$value                               ;;
                         noerr=*) NO_ERROR=$value                                 ;;
 
-                           mdev) USE_MDEV=true                                   ;;
-                         nomdev) USE_MDEV=                                       ;;
                livedir=*|ldir=*) FINAL_DIR=$value                                ;;
 
         #----- Some known codes -------------------------
@@ -649,6 +649,8 @@ valid_int() {
 start_hotplug() {
     local do_hotplug=$1  trace_load=$2
 
+    [ "$DISABLE_LOAD" ] && return
+
     # Set up file for recording sequence of kernel events sent to mdev
     echo > /dev/mdev.seq
     if [ "$trace_load" ]; then
@@ -656,8 +658,6 @@ start_hotplug() {
     elif [ -n "$do_hotplug" ]; then
         echo $LIVE_BIN/mdev-hotplug > /proc/sys/kernel/hotplug
     fi
-
-    [ "$USE_MDEV" ] && mdev -s
 }
 
 stop_hotplug() { echo > /proc/sys/kernel/hotplug; }
@@ -820,33 +820,29 @@ disable_hcd() {
 }
 
 load_kernel_modules() {
-    local module  do_load=$1  list=$2  file=$CUSTOM_DIR/$DISTRO_NAME/modules.load
+    local no_load=$1 do_load=$2  file=$CUSTOM_DIR/$DISTRO_NAME/modules.load
 
-    depmod &>/dev/null
+    no_load=$(echo $no_load | sed 's/VIDEO/nouveau,nvidia,i915,radeon/');
+    echo $no_load | sed 's/,/\n/g' >> /etc/modprobe.d/initrd.conf
+
+    [ "$DISABLE_LOAD" ] && return
 
     mkdir -p $MOD_DIR
-    # This one must be loaded before the others
+    depmod &>/dev/null
+
+    # These ones must be loaded before the others
+    local mod
     for mod in $LOAD_FIRST; do
-        #load_module $mod
-        modprobe -q $mod 2>/dev/null
+        modprobe -q -b $mod 2>/dev/null
     done
 
     if [ -r $file -a -n "$do_load" ]; then
         vmsg 7 'Load modules from file %s' "$(fq $file)"
         for module in $(grep -v "^\s*#" $file | sed 's/\s*#.*//' ); do
-            load_module $module
+            modprobe -q -b $module
         done
     fi
-
     autoload_modules 6
-
-    # . Could not load module <module-name>
-    for module in $(echo $list | sed 's/,/ /g'); do
-        case $module in
-            all) load_all_modules ;;
-              *) load_module $module || warn "Could not load module %s" $(pqw $module);;
-        esac
-    done
 }
 
 load_all_modules() {
@@ -855,30 +851,21 @@ load_all_modules() {
     local list=$(find $MOD_DIR/live -name "*.ko" | sed -e 's=.*/==' -e 's/\.ko$//')
     local module
     for module in $list; do
-        load_module $module
+        modprobe -q -b $module
     done
 }
 
 autoload_modules() {
     local alias  module  count  verb=$1
+    [ "$DISABLE_LOAD" ] && return
+
     [ "$verb" ] && vmsg $verb "Load hardware specific modules"
     for alias in $(find /sys/devices -name modalias -print0 | xargs -0 cat 2>/dev/null| sort -u); do
-        $LIVE_BIN/modprobe -q $alias &>/dev/null
-        [ "$TRACE_LOAD" ] && echo $alias >> /live/config/auto-load.out
+        $LIVE_BIN/modprobe -q -b $alias &>/dev/null
+        #[ "$TRACE_LOAD" ] && echo $alias >> /live/config/auto-load.out
+        local log_file=/live/config/auto-load.log
+        grep "^$alias$" $log_file || echo $alias >> $log_file
     done
-
-    [ "$USE_MDEV" ] && mdev -s
-}
-
-load_module() {
-    local name=$1
-
-    #vmsg $level "Load module:$dev_co $name"
-    #log_cmd modprobe $name
-    local msg=$(modprobe $name 2>&1 1>/dev/null)
-    [ "$msg" ] || return 0
-    ERR_MODULES="$ERR_MODULES $name"
-    return 1
 }
 
 #==============================================================================
