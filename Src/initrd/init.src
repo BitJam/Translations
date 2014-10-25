@@ -2824,6 +2824,7 @@ do_remaster() {
         msg $tbar
 
         local file full
+        rm -rf $sqfile_path/xtra.bak $sqfile_path/xtra.bad
         for file in $SQFILE_NAME $MAKE_OLD; do
             full=$sqfile_path/$file
             [ -e $full.bad ] && log_cmd mv -f $full.bad $full.bak
@@ -2859,6 +2860,7 @@ do_remaster() {
     msg $tbar
 
     local file full
+    rm -rf $sqfile_path/xtra.old
     for file in $SQFILE_NAME $MAKE_OLD; do
         full=$sqfile_path/$file
         [ -e $full     ] && log_cmd mv -f $full $full.old
