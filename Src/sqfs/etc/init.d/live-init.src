@@ -14,9 +14,6 @@
 
 XSESSION_DIR=/usr/share/xsessions
 
- ICON_MANAGERS="rox space"
-  rox_DESKTOPS=fluxbox,icewm,jwm
-space_DESKTOPS=fluxbox,icewm,jwm
       MENU_WMs="fluxbox icewm jwm"
       FF_PREFS="/etc/skel/.mozilla/firefox/*/prefs.js"
       INIT_OUT=/live/config/init.out
@@ -260,101 +257,9 @@ set_mirror() {
     sed -i "s=/ftp\.\(..\.\)\\?debian\.org/=/ftp.$mirror.debian.org/=" $source_list
 }
 
-all_valid_desktops() {
-    local raw=$(echo $1 | sed 's/,/ /g')
-    echo "    $raw"
-    local icon desk
-    for icon in $ICON_MANAGERS; do
-        echo -n "   "
-        for desk in $raw; do
-            eval local valid=\$${icon}_DESKTOPS
-            #echo "valid: $valid"
-            case ",$valid," in
-                *,$desk,*) echo -n " $icon-$desk" ;;
-            esac
-        done
-        echo
-    done
-}
-
-# Returns values in DESKTOP and RAW_DESKTOP
-check_icon_manager() {
-    local icon=$1 desktop=$2
-
-    [ -z "$desktop" ]            && return 1
-    [ -z "${desktop##$icon-*}" ] || return 1
-
-    RAW_DESKTOP=${desktop#$icon-}
-    eval local valid=\$${icon}_DESKTOPS
-    #echo "valid: $valid"
-    case ",$valid," in
-        *,$RAW_DESKTOP,*) ;;
-        *)
-            error "Desktop %s is not %s-enabled" $(pquote $RAW_DESKTOP) $icon
-            DESKTOP=$RAW_DESKTOP ;;
-    esac
-    return 0
-}
-
 set_default_desktop() {
-    local desktop=$(echo $1 | tr "[A-Z]" "[a-z]")
-
-    local xinitrc=/etc/skel/.xinitrc
-    local default
-    # Grab default desktop
-    default=$(sed -nr "s/^\s*DEFAULT_DESKTOP=\"?'?(.*)/\1/p" $xinitrc | tail -n 1)
-    default=${default%\"}
-    default=${default%\'}
-
-    if [ -z "$default" ]; then
-        error "Could not find %s in %s" $(pquote DEFAULT_DESKTOP) $(pquote $xinitrc)
-        return
-    fi
-    echo_live "Found default desktop %s" $(pquote $default)
-
-    if [ "$desktop" = "$default" ]; then
-        echo_live "Desktop %s is already the default" $(pquote $desktop)
-        return
-    fi
-
-    # Check for valid icon-manager <icon>- prefix
-    local DESKTOP RAW_DESKTOP
-    for icon in $ICON_MANAGERS; do
-        check_icon_manager "$icon" "$desktop" && break
-    done
-
-    desktop=${DESKTOP:-$desktop}
-    local raw_desktop=${RAW_DESKTOP:-$desktop}
-
-    local valid_desktops
-    for x in $(grep -h ^Name= $XSESSION_DIR/* | cut -d= -f2 | tr "[A-Z]" "[a-z]" | sort -u); do
-        valid_desktops="$valid_desktops,$x"
-    done
-
-    valid_desktops=${valid_desktops#,}
-    case ",$valid_desktops," in
-        *,$raw_desktop,*) ;;
-                   *)
-            error "Desktop %s is not a valid desktop." $(pquote $raw_desktop)
-            error "Valid choices are %s" "$NO_COLOR$"
-            all_valid_desktops $valid
-            return;;
-    esac
-
-    # Now change the default in the .xinitrc files
-    echo_live "Setting default desktop to %s" $(pquote $desktop)
-
-    local default_file=/etc/skel/.desktop-session/default-desktop
-    echo $desktop > $default_file
-
-    local regex="s/^DEFAULT_DESKTOP=.*/DEFAULT_DESKTOP=\"$desktop\"/"
-    sed -i $regex $xinitrc
-
-    local demo_xinitrc=/home/demo/.xinitrc
-    if [ -e $demo_xinitrc ]; then
-        sed -i $regex $demo_xinitrc
-        chown demo:users $demo_xinitrc
-    fi
+    local desktop=$1 desktop_file=/home/demo/.desktop-session/default-desktop
+    echo $desktop > $desktop_file
 }
 
 add_fstab_swap() {
