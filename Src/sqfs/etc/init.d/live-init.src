@@ -99,7 +99,7 @@ save_desktop() {
     fi
 
     get_init_param SQFILE_PATH
-    local to_dir=/live/boot-dev/$SQFILE_PATH/desktop
+    local to_dir=/live/boot-dev/$SQFILE_PATH/personalize/by-user
 
     local user from to
     for user in $(ls /home); do
@@ -108,7 +108,7 @@ save_desktop() {
         to="$to_dir/$user/default-desktop"
         should_copy "$from" "$to" || continue
         mkdir -p $(dirname "$to")
-        echo_live "Save %s desktop %s" $(pquote $user) $(pquote cat $sorc)
+        echo_live "Save %s desktop %s" $(pquote $user) $(pquote $(cat $from))
         cp "$from" "$to"
     done
 }
@@ -133,32 +133,31 @@ restore_desktop() {
 
     get_init_param SQFILE_PATH
 
-    local d dir
+    local d from_dir
     for d in /live/boot-dev live/to-ram; do
-        d=$d/$SQFILE_PATH/desktop
+        d=$d/$SQFILE_PATH/personalize/by-user
         [ -d $d ] || continue
-        dir=$d
+        from_dir=$d
         break
     done
 
-    [ "$dir" ] || return
+    [ "$from_dir" ] || return
 
     local user dest_dir dest sorc
-    for user in $(ls $dir); do
-        sorc=$dir/$user/default-desktop
+    for user in $(ls $from_dir); do
+        sorc=$from_dir/$user/default-desktop
         dest_dir=/home/$user/.desktop-session
         [ -d "$dest_dir" ] || continue
         [ -e "$sorc"     ] || continue
         local dest=$dest_dir/default-desktop
         should_copy $sorc $dest || continue
-        echo_live "restore %s desktop to %s" $(pquote $user) $(pquote cat $sorc)
+        echo_live "restore %s desktop to %s" $(pquote $user) $(pquote $(cat $sorc))
         cp "$sorc" "$dest"
         chown $user:users $dest
     done
 }
 
 create_home() {
-
     local demo=/home/demo
     rmdir $demo 2>/dev/null
 
