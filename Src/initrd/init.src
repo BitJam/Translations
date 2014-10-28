@@ -324,12 +324,11 @@ main_core() {
     [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
 
     if mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS"; then
+        HOMEFS_DEV=$PERSIST_DEVICE
         msg "Enabled %s persistence" "$(cq home)"
     else
         [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" "$(pqh home!)"
     fi
-
-    [ "$DELAYED_UMOUNT" ] && log_cmd umount -l $DELAYED_UMOUNT
 
     [ "$DO_XTRA"       ] && copy_xtra    $DEFAULT_DIR
     [ "$DO_AUTO_LOGIN" ] && auto_login   "$AUTO_LOGIN_PROG" "$AUTO_LOGIN_TERMS" "$NEW_ROOT"
@@ -1568,6 +1567,8 @@ mount_linuxfs() {
         try_file_mount  $wrap_mp/$SQFILE_NAME $sqfs_mp ro \
             || fatal "Could not mount %s as a %s file" $sqfile_full 'filesystem'
     fi
+
+    LINUXFS_DEV=$(df $sqfile_full | tail -n1 | cut -d" " -f1)
 
     SQFS_VID=$(get_vid $vid_file)
 
@@ -2896,6 +2897,7 @@ copy_to_ram() {
 
     if _copy_to_ram "$@"; then
 
+        LINUXFS_DEV=
         SQFILE_MP=$toram_mp
         SQFILE_DIR=$toram_mp
         SQFILE_FULL=$toram_mp/$name
@@ -2995,7 +2997,6 @@ _copy_to_ram() {
     if ! [ "$PERSIST_DEVICE" -a "$PERSIST_DEVICE" = "$SQFILE_DEV" ]; then
         # remount ro to be on the safe side
         log_cmd mount -o remount,ro $toram_mp
-        DELAYED_UMOUNT=$SQFILE_MP
     fi
 
     DID_TORAM=true
@@ -3377,6 +3378,7 @@ mount_and_copy_rootfs() {
     if _mount_and_copy_rootfs "$@"; then
         PERSIST_ROOT=true
         if [ "$STATIC_ROOT" ]; then
+            ROOTFS_DEV=$PERSIST_DEVICE
             msg "Enabled %s persistence" "$(cq static root)"
         else
             msg "Enabled %s persistence" "$(cq dynamic root)"
@@ -4009,6 +4011,21 @@ prepare_switch_root() {
     PATH=$new_live/bin:$PATH
 
     (cd $new_root && mkdir -p sys proc dev/pts)
+}
+
+late_umount() {
+    local dev=$1
+    [ "$dev" ] || return
+
+    local dep
+    for dep in $HOMEFS_DEV $ROOTFS_DEV $LINUXFS_DEV; do
+        [ "$dep" = "$dev" ] && return
+    done
+
+    # Don't umount if not mounted
+    cut -d" " -f1 /proc/mounts | grep -q "^$dev$" || return
+    msg "late umount %s" $(pq $dev)
+    log_cmd umount -l $dev
 }
 
 #==============================================================================
