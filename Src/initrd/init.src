@@ -1358,12 +1358,10 @@ find_frugal_file() {
         fi
 
     else
-
         warn
         warn "Could not find %s device with %s" $(cqw frugal) "$name $(cqw $value)"
         warn "Will start normal boot to do frugal install"
         warn
-
     fi
 
     find_boot_file "$SQFILE_FILE" "$BOOT_MP" "$BOOT_ID" "$RETRY_TIME" \
