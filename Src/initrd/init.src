@@ -3931,19 +3931,26 @@ find_init_prog() {
 }
 
 run_init_scripts() {
-    local new_root=$1
+    local new_root=$1; shift
 
     mkdir -p $new_root/etc/live/protect $new_root/run/lock
 
     PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/live/bin
 
     local script
-    for script in $LIVE_SCRIPTS; do
+    for script; do
         chroot $new_root /etc/init.d/$script start
         rm -f $new_root/etc/rc?.d/S*$script
     done
 
-    PATH=$LIVE_BIN
+    # Do a persist-save to save new passwords and persist save mode
+    [ -f $new_root/live/config/new-passwords       ] || return
+    [ -f $new_root/live/config/persist-save.conf   ] || return
+
+    local persist_save=/usr/local/bin/persist-save
+    [ -x $new_root$persist_save                    ] || return
+    msg "Do persist-save"
+    chroot $new_root $persist_save --cli --nolog --quiet
 }
 
 
