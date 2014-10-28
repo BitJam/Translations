@@ -55,7 +55,7 @@
 
      MAX_MOUNT_CNT=30
        RETRY_DELAY=50               # in hundredths of a second
-           VERBOSE=4
+           VERBOSE=5
 
         DO_HOTPLUG=true
         LOAD_FIRST="usb-common usbcore ehci-hcd fusbh200-hcd fotg210-hcd"
