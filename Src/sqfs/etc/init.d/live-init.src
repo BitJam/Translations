@@ -399,10 +399,7 @@ Keyboard_Out
 
     [ "$CMD_DPI" ] && set_dpi $CMD_DPI
 
-    [ "$CMD_DESKTOP" ] && set_default_desktop $CMD_DESKTOP
-
     xorg_conf=/etc/X11/xorg.conf
-
 
     if [ "$MAKE_XORG" ]; then
         echo_live "Configuring %s file" $(pquote $xorg_conf)
@@ -412,6 +409,9 @@ Keyboard_Out
     fi
 
     create_home
+
+    [ "$CMD_DESKTOP" ] && set_default_desktop $CMD_DESKTOP
+
     restore_desktop
 
     enable_xkb="s/^#\?setxkbmap.*/setxkbmap -layout \"$XKBLAYOUT\" -option \"$XKBOPTIONS\" -variant \"$XKBVARIANT\"/"
