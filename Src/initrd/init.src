@@ -167,6 +167,26 @@ main_wrapper() {
 
     write_log_files $MY_LOG $NEW_ROOT/$LOG_FILE
 
+    # Need to run persist-password outside of our error catching
+
+    breakpoint 8 "before running init.d scripts"
+
+    # FIXME remove after squashfs gets updated
+    local f
+    for f in halt reboot; do
+        rm -f $NEW_ROOT/usr/local/bin/$f
+    done
+    rm -f $NEW_ROOT/etc/rc2.d/S01slim
+
+    run_init_scripts $NEW_ROOT $LIVE_SCRIPTS
+    PATH=$LIVE_BIN
+
+    local time_1=$(get_time)
+    local dt=$((time_1 - time_0))
+    vmsg 6
+    vmsg 5 "The %s program took %s seconds" $0 $(nq $(get_seconds $dt))
+    vmsg 6 $hbar
+
     breakpoint 9 "right before starting init"
 
     # re-enable console screen blanking at 15 minutes
@@ -318,27 +338,15 @@ main_core() {
     write_output_files     $OUTPUT_DIR
     old_write_output_files $OUTPUT_DIR
 
-    #chroot $SQFS_MP /usr/bin/lspci -v >> $MY_LOG
+    # FIXME: since we are using the real persist-save we can do these either
+    # before or after we run the init scripts!
+
+    late_umount $PERSIST_DEVICE
+    late_umount $SQFILE_DEV
 
     breakpoint 7 "before prepare switch_root"
 
     prepare_switch_root $NEW_ROOT $LIVE_DIR $FINAL_DIR
-
-    local time_1=$(get_time)
-    local dt=$((time_1 - time_0))
-
-    breakpoint 8 "before running init.d scripts"
-
-    # FIXME remove after squashfs gets updated
-    local f
-    for f in halt reboot; do
-        rm -f $NEW_ROOT/usr/local/bin/$f
-    done
-
-    run_init_scripts $NEW_ROOT
-    vmsg 6
-    vmsg 5 "The %s program took %s seconds" $0 $(nq $(get_seconds $dt))
-    vmsg 6 $hbar
 }
 
 #------------------------------------------------------------------------------
