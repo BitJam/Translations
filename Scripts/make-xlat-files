@@ -159,15 +159,28 @@ main() {
         fi
 
         # Only used in xlat mode but no harm to always do it
+        local src_file=$(find $SRC_DIR -name $domain.src)
+
+        if [ -z "$src_file" ]; then
+            warn "Could not find source file for domain $domain"
+            continue
+        fi
+
+        if [ "$(echo $src_file | wc -w)" -gt 1 ]; then
+            warn "Multiple source files with name $domain.src"
+            continue
+        fi
+
         local xlat_dir
-        case $domain in
-      tsplash|init|ejectcd)  xlat_dir=$INITRD_DIR/live/locale/xlat;;
-                         *)  xlat_dir=$OUTPUT_DIR$XLAT_DIR ;;
+        case $src_file in
+        */initrd/*)  xlat_dir=$INITRD_DIR/live/locale/xlat;;
+          */sqfs/*)  xlat_dir=$OUTPUT_DIR$XLAT_DIR ;;
+                 *)  fatal "no xlat_dir for $input_file"
         esac
 
         local str_maker=$STR_MAKER_DIR/$domain.str
 
-        [ -z "$MO_ONLY" ] && prep_xlat $domain $name
+        [ -z "$MO_ONLY" ] && prep_xlat $src_file $domain $name
 
         stem=$TRANS_DIR/$PROJECT.$name
         if ! tdir=$(find_tdir $stem); then
@@ -223,7 +236,7 @@ main() {
 
         done
         po_count=$((po_count + count))
-        say "%15s: %2d langs:%s" $domain $count "$langs"
+        say "%25s: %2d langs:%s" $domain $count "$langs"
         [ $count -eq 0 ] && warn "No languages for $domain"
 
         [ "$SINGLE_STEP" ] || continue
@@ -235,24 +248,14 @@ main() {
         local dt=$((`get_time` - $start_time))
         local seconds=$(get_seconds $dt)
         sayp $po_count   "processed %n .po files in $seconds second%s"
-        sayp $mo_count   "Created %n .mo file%s" $mo_count
+        sayp $mo_count   "Created %n .mo   file%s" $mo_count
         sayp $xlat_count "Created %n .xlat file%s" $xlat_count
     fi
 }
 
 
 prep_xlat() {
-    local domain=$1  name=$2
-
-    local src_file=$(find $SRC_DIR -name $domain.src)
-    [ -z "$src_file" ] \
-        && warn "Could not find source file for domain $domain" \
-        && continue
-
-    local src_cnt=$(echo $src_file | wc -w)
-    [ $src_cnt -gt 1 ] \
-        && warn "Multiple source files with name $domain.src" \
-        && continue
+    local src_file=$1  domain=$2  name=$3
 
     local init_opt bin_dir src_dir=$(dirname $src_file)
     src_dir=${src_dir#$SRC_DIR/}
@@ -262,13 +265,15 @@ prep_xlat() {
         *) warn "Unrecognized source directory: $src_dir" && continue ;;
     esac
 
-
-    [ -z "${src_file##$SRC_DIR/initrd/*}" ] && init_opt=--init
+    case $domain in
+        init|tsplash)  init_opt=--init ;;
+    esac
 
     local bin_file=$bin_dir/$domain
     if not_skip_or_older replace $bin_file $src_file; then
         vsay "> $bin_file"
         pretend $CMD_REPLACE $REPLACE_OPTS $init_opt $src_file -o $bin_file
+        pretend chmod --reference=$src_file $bin_file
     fi
 
     stop_after replace && continue
