@@ -44,7 +44,8 @@ umask 022
 # Ignore these signals: INT, TERM, SEGV
 trap "" 2 3 11
 
-. /usr/share/antiX/lib/live-init-utils.sh
+#. /usr/share/antiX/lib/live-init-utils.sh
+. /live/lib/live-init-utils.sh
 
 start_init_logging
 load_translation

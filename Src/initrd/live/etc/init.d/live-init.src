@@ -46,11 +46,12 @@ automount=off|amnt=off)                          AUTOMOUNT_OFF=true ;;
     esac
 done
 
-PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin"; export PATH
+PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin:/live/bin"; export PATH
 
 umask 022
 
-. /usr/share/antiX/lib/live-init-utils.sh
+#. /usr/share/antiX/lib/live-init-utils.sh
+. /live/lib/live-init-utils.sh
 
 start_init_logging
 load_translation
