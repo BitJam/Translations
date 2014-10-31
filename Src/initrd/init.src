@@ -80,7 +80,7 @@ MKFS_FREE_MARGIN=20
          MKFS_SIZES="65 100 150 200 250 375 500 750 1000 1500 2000 2500 3000 4000"
       MAX_MKFS_SIZE=${MKFS_SIZES##* }
 
-      LIVE_SCRIPTS="live-L10n live-init persist-password persist-autosave"
+      LIVE_SCRIPTS="live-L10n live-init persist-password persist-autosave live-disable-services"
 
 set_live_dirs() {
     local dir=$1
@@ -169,15 +169,29 @@ main_wrapper() {
 
     # Need to run persist-password outside of our error catching
 
-    breakpoint 8 "before running init.d scripts"
-
     # FIXME remove after squashfs gets updated
+    #----------------------------------------------------------------
     local f
     for f in halt reboot; do
         rm -f $NEW_ROOT/usr/local/bin/$f
     done
-    rm -f $NEW_ROOT/etc/rc2.d/S01slim
 
+    rm -f  $NEW_ROOT/etc/rc2.d/S01slim
+    rm -f  $NEW_ROOT/sbin/make-fstab
+    rm -f  $NEW_ROOT/usr/sbin/buildxconfig
+    #rm -rf $NEW_ROOT/usr/share/antiX/lib
+
+    rm -rf /usr/share/antiX/init-xlat
+
+    for f in $LIVE_SCRIPTS live-restore-services; do
+        rm -f $NEW_ROOT/etc/init.d/$f
+        rm -f $NEW_ROOT/etc/rc?.d/S*[0-9]$f
+    done
+    #----------------------------------------------------------------
+
+    breakpoint 8 "before running init.d scripts"
+
+    PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/live/bin
     run_init_scripts $NEW_ROOT $LIVE_SCRIPTS
     PATH=$LIVE_BIN
 
@@ -3936,12 +3950,9 @@ run_init_scripts() {
 
     mkdir -p $new_root/etc/live/protect $new_root/run/lock
 
-    PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/live/bin
-
     local script
     for script; do
-        chroot $new_root /etc/init.d/$script start
-        rm -f $new_root/etc/rc?.d/S*$script
+        chroot $new_root /live/etc/init.d/$script start
     done
 
     # Do a persist-save to save new passwords and persist save mode
@@ -3954,6 +3965,20 @@ run_init_scripts() {
     chroot $new_root $persist_save --cli --nolog --quiet
 }
 
+late_umount() {
+    local dev=$1
+    [ "$dev" ] || return
+
+    local dep
+    for dep in $HOMEFS_DEV $ROOTFS_DEV $LINUXFS_DEV; do
+        [ "$dep" = "$dev" ] && return
+    done
+
+    # Don't umount if not mounted
+    cut -d" " -f1 /proc/mounts | grep -q "^$dev$" || return
+    msg "late umount %s" $(pq $dev)
+    log_cmd umount -l $dev
+}
 
 prepare_switch_root() {
     local new_root=$1  live_dir=$2  final_live=$3
@@ -3991,7 +4016,7 @@ prepare_switch_root() {
     done
 
     # Remove libs, modules, and programs we won't need to save a little RAM
-    rm -f $(find $live_dir/lib -type f -o -type l | egrep -v "/(ld|libc|libm)[.-][^/]*$")
+    rm -f $(find $live_dir/lib -type f -o -type l | egrep -v "/(live-init|ld|libc|libm)[.-][^/]*$")
 
     (cd $live_dir/bin && rm -rf fbcondecor_helper ntfs-3g)
     rm -rf /$live_dir/etc/splash
@@ -4001,7 +4026,7 @@ prepare_switch_root() {
     mountpoint $fbsys &>/dev/null && umount $fbsys
 
     local dir old new
-    for dir in bin config lib locale; do
+    for dir in bin config etc lib locale; do
         old=$live_dir/$dir
         new=$new_live/$dir
         mkdir -p $new
@@ -4019,21 +4044,6 @@ prepare_switch_root() {
     PATH=$new_live/bin:$PATH
 
     (cd $new_root && mkdir -p sys proc dev/pts)
-}
-
-late_umount() {
-    local dev=$1
-    [ "$dev" ] || return
-
-    local dep
-    for dep in $HOMEFS_DEV $ROOTFS_DEV $LINUXFS_DEV; do
-        [ "$dep" = "$dev" ] && return
-    done
-
-    # Don't umount if not mounted
-    cut -d" " -f1 /proc/mounts | grep -q "^$dev$" || return
-    msg "late umount %s" $(pq $dev)
-    log_cmd umount -l $dev
 }
 
 #==============================================================================
