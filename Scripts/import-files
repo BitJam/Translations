@@ -1,0 +1,17 @@
+#!/bin/bash
+
+import_files() {
+    local from_dir=$1 to_dir=$2 files=$3 file
+    for file in $(cat $files); do
+        local from=$from_dir$file 
+        local to=$to_dir$file.src
+        if [ -e $from ]; then
+            basename $from
+            cp -a $from $to
+        else
+            echo "Missing: $from" >&2
+        fi
+    done
+}
+
+import_files "$@"

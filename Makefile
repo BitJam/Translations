@@ -4,6 +4,9 @@ PREFIX          :=
 OUT_DIR         := Output
 TRANS_DIR       := translations
 
+IMPORT_DIR      := ../Live-initrd
+EXPORT_DIR      := ../Xlated-initrd
+
 #INITRD_IDIR	 := ../LiveUSB/14-alpha-2/initrd
 DOMAINS_FILE    := ANTIX_NAMES
 
@@ -36,7 +39,7 @@ LIVE_INIT_SRC   := Src/initrd/init.src
 INITRD_SRC      := $(shell find Src/initrd -name "*.src")
 
 .PHONY:  help help-more all force-all xlat force-xlat mo force-mo validate
-.PHONY:  initrd install-initrd install uninstall clean bump
+.PHONY:  initrd install-initrd install uninstall clean bump import export
 
 help:
 	@echo "Common targets for \"make\" command:"
@@ -79,6 +82,15 @@ help:
 all: mo xlat
 
 force-all: force-xlat force-mo
+
+import:
+	Scripts/import-files $(IMPORT_DIR) Src/initrd IMPORT_FILES
+
+export:
+	rm -rf $(EXPORT_DIR)
+	mkdir -p $(EXPORT_DIR)
+	cp -a $(IMPORT_DIR)/[a-z]* $(EXPORT_DIR)/
+	cp -a Initrd/* $(EXPORT_DIR)/
 
 xlat:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"

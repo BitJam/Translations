@@ -2,7 +2,7 @@
 
 #==============================================================================
 # LiveCD/USB/HD init script
-# (C) 2009-2014 BitJam for antiX <antiX@operamail.com>
+# (C) 2009-2015 BitJam for antiX <antiX@operamail.com>
 # Inspired by the work of  Klaus Knopper
 #
 # License: GPLv3 or later
@@ -14,9 +14,19 @@
 #              _FILE   relative path with filename
 #              _FULL   absolute mountpoint and path and filename
 #              _DIR    varies
+#
+# CUSTOMIZATION:
+# Customize to your distro using /etc/initrd-release.  Add further
+# customization if needed with scripts at /live/custom/$DISTRO/[1-9].sh.
+# These scripts are run at the respective breakpoints.  So 1.sh is run
+# at breakpoint 1 and so on.  The script 0.sh is run before we read the
+# boot parameters.  You can use this to set defaults that can be
+# over-ridden by boot parameters.  Use 1.sh to override boot parameters
+# that you don't want users to be able to adjust.
 
-                VERSION="7.10.02"
-           VERSION_DATE="Thu Oct 16 17:50:11 MDT 2014"
+                     ME="initrd init"
+                VERSION="7.14.00"
+           VERSION_DATE="Mon Jan 26 20:54:50 MST 2015"
               DEVELOPER="BitJam"
   DISTRO_BUG_REPORT_URL="http://antix.freeforums.org"
 
@@ -29,7 +39,7 @@
 
           LIVE_DIR="/live"
          FINAL_DIR="/live"
-          LIVE_BIN="$LIVE_DIR/bin"
+          LIVE_BIN="/bin"
 
           AUFS_DIR="aufs"
 
@@ -38,7 +48,7 @@
       MIN_AUFS_RAM=80
 
            LOG_DIR="/var/log/live"
-          LOG_FILE="$LOG_DIR/bootstrap.log"
+          LOG_FILE="$LOG_DIR/initrd.log"
 
             MY_LOG=/init.log
            VID_DIR="/etc/live/version"
@@ -63,7 +73,9 @@
           VID_NAME=VID
       LINUXFS_NAME=linuxfs
 
-           NO_LOAD=
+        BLACK_LIST=
+   BLACK_LIST_FILE=/etc/modprobe.d/initrd.conf
+
            DO_LOAD=
       DISABLE_LOAD=
 
@@ -74,13 +86,16 @@
   LIVE_386_LD_PATH="/lib:/lib/i386-linux-gnu:/usr/lib"
 
 MKFS_FREE_MARGIN=20
-  rootfs_SIZE_PARAM="min_size=64 mid_size=400 max_size=1000 factor=50"
-  homefs_SIZE_PARAM="min_size=64 mid_size=400 max_size=1000 factor=25"
+  rootfs_SIZE_PARAM="min_size=250 mid_size=100 max_size=4000 factor=50"
+  homefs_SIZE_PARAM="min_size=250 mid_size=100 max_size=3000 factor=25"
 
-         MKFS_SIZES="65 100 150 200 250 375 500 750 1000 1500 2000 2500 3000 4000"
+         MKFS_SIZES="250 375 500 750 1000 1500 2000 2500 3000 4000 5000 6000"
       MAX_MKFS_SIZE=${MKFS_SIZES##* }
 
       LIVE_SCRIPTS="live-L10n live-init persist-password persist-autosave live-disable-services"
+      LIVE_SCRIPTS="live-L10n live-init live-disable-services"
+
+      LAST_BP_TIME=0
 
 set_live_dirs() {
     local dir=$1
@@ -162,46 +177,53 @@ main_wrapper() {
             | sed -e "s/^/${yellow}Error: $red/" -e "s/$/$nc_co/" | tee -a $MY_LOG; done
     fi
 
+    read LAST_BP_TIME < /LAST_BP_TIME
+
     # Nota Bene: when error log is enabled, main_core() runs in a subshell
     # so it cannot affect our variables.
 
-    write_log_files $MY_LOG $NEW_ROOT/$LOG_FILE
-
     # Need to run persist-password outside of our error catching
 
-    # FIXME remove after squashfs gets updated
-    #----------------------------------------------------------------
-    local f
-    for f in halt reboot; do
-        rm -f $NEW_ROOT/usr/local/bin/$f
-    done
-
-    rm -f  $NEW_ROOT/etc/rc2.d/S01slim
-    rm -f  $NEW_ROOT/sbin/make-fstab
-    rm -f  $NEW_ROOT/usr/sbin/buildxconfig
-    #rm -rf $NEW_ROOT/usr/share/antiX/lib
-
-    rm -rf /usr/share/antiX/init-xlat
-
-    for f in $LIVE_SCRIPTS live-restore-services; do
-        rm -f $NEW_ROOT/etc/init.d/$f
-        rm -f $NEW_ROOT/etc/rc?.d/S*[0-9]$f
-    done
-    #----------------------------------------------------------------
+#--    # FIXME remove after squashfs gets updated
+#--    #----------------------------------------------------------------
+#--    local f
+#--    for f in halt reboot; do
+#--        rm -f $NEW_ROOT/usr/local/bin/$f
+#--    done
+#--
+#--    rm -f  $NEW_ROOT/etc/rc2.d/S01slim
+#--    rm -f  $NEW_ROOT/sbin/make-fstab
+#--    rm -f  $NEW_ROOT/usr/sbin/buildxconfig
+#--    #rm -rf $NEW_ROOT/usr/share/antiX/lib
+#--
+#--    rm -rf /usr/share/antiX/init-xlat
+#--
+#--    for f in $LIVE_SCRIPTS live-restore-services; do
+#--        rm -f $NEW_ROOT/etc/init.d/$f
+#--        rm -f $NEW_ROOT/etc/rc?.d/S*[0-9]$f
+#--    done
+#--
+#--    #----------------------------------------------------------------
 
     breakpoint 8 "before running init.d scripts"
 
-    PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/live/bin
+    [ "$PERSIST_ROOT" ] && LIVE_SCRIPTS="$LIVE_SCRIPTS persist-password"
+    [ "$PERSIST_ROOT" -a -z "$STATIC_ROOT" ] && LIVE_SCRIPTS="$LIVE_SCRIPTS persist-autosave"
+
+    PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin
     run_init_scripts $NEW_ROOT $LIVE_SCRIPTS
     PATH=$LIVE_BIN
+
+    breakpoint 9 "right before starting init"
 
     local time_1=$(get_time)
     local dt=$((time_1 - time_0))
     vmsg 6
-    vmsg 5 "The %s program took %s seconds" $0 $(nq $(get_seconds $dt))
+    vmsg 5 "The %s program took %s seconds" "$ME" $(nq $(get_seconds $dt))
     vmsg 6 $hbar
 
-    breakpoint 9 "right before starting init"
+    write_log_files $MY_LOG $NEW_ROOT/$LOG_FILE
+    MY_LOG=$NEW_ROOT/$LOG_FILE.color
 
     # re-enable console screen blanking at 15 minutes
     [ "$VT_BLANK" ] && printf "\e[9;$VT_BLANK]\e[14;$VT_BLANK]"
@@ -218,28 +240,28 @@ main_wrapper() {
         safe_shutdown poweroff ask
 
     else
-        vmsg 6 "Start %s process" init
+        vmsg 6 "Start %s process" $(pq /sbin/init)
         exec $LIVE_BIN/switch_root -c /dev/console $NEW_ROOT /sbin/init "$@"
     fi
 }
 
 main_core() {
     [ "$NO_CLEAR" ] || printf "\e[1J"       # Clear and reset screen
-    vmsg 6 "=== $0 bootstrap =================================================="
+    vmsg 6 "=== initrd bootstrap =================================================="
 
-    vmsg 6 '%s started at %s seconds' $0 $(nq $(get_seconds $time_0))
+    vmsg 6 '%s started at %s seconds' "$ME" $(nq $(get_seconds $time_0))
 
     select_breakpoints
 
-    breakpoint 1 "before loading modules"
-
     start_hotplug "$DO_HOTPLUG" "$TRACE_LOAD"
-    load_kernel_modules "$NO_LOAD" "$DO_LOAD"
 
+    breakpoint 1 "before welcome"
     do_welcome "$DISTRO_PRETTY_NAME" "$VERSION" "$VERSION_DATE"
-
     show_bootcodes "$UNKNOWN_BOOTCODES"
     show_integer_errors "$INTEGER_ERRORS"
+
+    breakpoint 2 "before loading modules"
+    load_kernel_modules "$BLACK_LIST" "$DO_LOAD" "$MODULE_LIST"
 
     : ${SQFILE_FILE:=$DEFAULT_SQFILE}
     : ${SQFILE_NAME:=${SQFILE_FILE##*/}}
@@ -254,7 +276,7 @@ main_core() {
     # will always work
     #[ "$NO_EHCI" ] && disable_hcd ehci
 
-    breakpoint 2 "before looking for linuxfs file"
+    breakpoint 3 "before looking for linuxfs file"
 
     RW_MODE=ro
 
@@ -269,14 +291,19 @@ main_core() {
     [ "$DID_ISO" ] && REMASTERABLE=
 
     BOOT_UUID=$(device_uuid $SQFILE_DEV)
-    vmsg 6 "boot device uuid: $BOOT_UUID"
-    breakpoint 3 "after mounting boot device"
+    [ "$BOOT_UUID" ] && vmsg 6 "boot device uuid: $BOOT_UUID"
+    breakpoint 4 "after mounting boot device"
 
     mount -o remount,rw $SQFILE_DEV 2>/dev/null
     dir_has_param "$SQFILE_MP" rw || REMASTERABLE=
     [ "$REMASTERABLE" ] && do_remaster "$SQFILE_FULL"
 
     mount_linuxfs "$SQFS_MP" "$SQFILE_FULL" "$WRAP_FILE_MP"
+
+    if [ "$LOAD_ALL_MODULES" ]; then
+        debug_cmd find /sys/devices -name uevent -exec sed -n 's/^MODALIAS=//p' '{}' + 2>/dev/null | sort -u
+        debug_cmd lsmod
+    fi
 
     prep_ld_path
 
@@ -285,7 +312,7 @@ main_core() {
     #[ "$PERSIST_FILES" ] && mount -o remount,rw $SQFILE_DEV
     mount -o remount,rw $SQFILE_DEV
 
-    breakpoint 4 "after mounting linuxfs file"
+    breakpoint 5 "after mounting linuxfs file"
 
     prepare_persistence
 
@@ -297,7 +324,7 @@ main_core() {
     # Check for ehci warning
     dmesg | grep 'Warning.*ehci' >&2
 
-    breakpoint 5 "after mounting persistence device"
+    #breakpoint 6 "after mounting persistence device"
 
     fsck_boot_dev "$SQFILE_DEV" "$SQFILE_MP"
 
@@ -335,6 +362,9 @@ main_core() {
 
     breakpoint 6 "after mounting aufs"
 
+    rm -f $NEW_ROOT$BLACK_LIST_FILE
+    [ -e $BLACK_LIST_FILE ] && cp $BLACK_LIST_FILE $NEW_ROOT$BLACK_LIST_FILE
+
     [ "$WANT_HOMEFS" ] && copy_homefs $PERSIST_FULL_PATH
 
     if mount_persist_file 'homefs' $NEW_ROOT/home 'home' "$WANT_HOMEFS" "$NEED_HOMEFS"; then
@@ -343,6 +373,13 @@ main_core() {
     else
         [ "$NEED_HOMEFS" ] && non_fatal "Could not enable required %s persistence" "$(pqh home!)"
     fi
+
+#--    # FIXME: remove Dave's stuff before adding xtra files
+#--    if [ -x $DEFAULT_DIR/xtra/usr/local/bin/desktop-session ]; then
+#--        rm -f $AUFS_MP/usr/local/bin/desktop-session*
+#--        rm -f $AUFS_MP/usr/local/bin/antiX-FileManager.sh
+#--        rm -f $AUFS_MP/usr/local/bin/desktop-menu-apt-update
+#--    fi
 
     [ "$DO_XTRA"       ] && copy_xtra    $DEFAULT_DIR
     [ "$DO_AUTO_LOGIN" ] && auto_login   "$AUTO_LOGIN_PROG" "$AUTO_LOGIN_TERMS" "$NEW_ROOT"
@@ -360,6 +397,8 @@ main_core() {
     breakpoint 7 "before prepare switch_root"
 
     prepare_switch_root $NEW_ROOT $LIVE_DIR $FINAL_DIR
+
+    echo $LAST_BP_TIME > /LAST_BP_TIME
 }
 
 #------------------------------------------------------------------------------
@@ -391,7 +430,7 @@ make_nodes() {
 
 read_distro_release() {
     local file=$1
-    sed -r -n 's/^\s*([A-Z0-9_]+=)/DISTRO_\1/p' $file
+    #sed -r -n 's/^\s*([A-Z0-9_]+=)/DISTRO_\1/p' $file >> $MY_LOG
     eval $(sed -r -n 's/^\s*([A-Z0-9_]+=)/DISTRO_\1/p' $file)
 }
 
@@ -416,6 +455,8 @@ read_cmdline_params()
         value=${param#*=}
 
         case $param in
+                       poweroff) poweroff -f -n                                  ;;
+                         reboot) reboot -f -n                                    ;;
                bootdir=*|bdir=*) BOOT_DIR=$value                                 ;;
     bootlabel=*|blabel=*|blab=*) BOOT_ID=label=$value                            ;;
              bootuuid=*|buuid=*) BOOT_ID=uuid=$value                             ;;
@@ -431,7 +472,7 @@ read_cmdline_params()
 
  persistretry=*|pretry=*|ptry=*) valid_int PERSIST_RETRY $param                  ;;
 
-                          dbv=*) DBV=$value ;;
+                          dbv=*) DBV=$value                                      ;;
                         fneed=*) FRUGAL_NEEDED=$value                            ;;
                          fforce) FORCE_FRUGAL=true                               ;;
                          frugal) FRUGAL_ID=label=$DISTRO_NAME-Frugal ; FRUGAL=true                   ;;
@@ -465,6 +506,7 @@ read_cmdline_params()
                          doxtra) DO_XTRA=true                                    ;;
 
                             db+) DO_AUTO_LOGIN=true; DO_FANCY=true; DB_PLUS=true ;;
+                           db++)                                                 ;;
 
             fancyprompt|fprompt) DO_FANCY=true                                   ;;
                autologin|alogin) DO_AUTO_LOGIN=true                              ;;
@@ -481,11 +523,10 @@ read_cmdline_params()
                         checkfs) FORCE_FSCK=true                                 ;;
                       nocheckfs) DO_FSCK=                                        ;;
 
-#                         load=*) MODULE_LIST=$MODULE_LIST,$value                 ;;
+                         load=*) MODULE_LIST=$MODULE_LIST,$value                 ;;
 #                           load) DO_LOAD=true                                    ;;
-#                         noload) DO_LOAD=                                        ;;
                           noload) DISABLE_LOAD=true                              ;;
-                        noload=*) NO_LOAD=$NO_LOAD,$value                        ;;
+                bl=*|blacklist=*) BLACK_LIST=$BLACK_LIST,$value                  ;;
 
                       nohotplug) DO_HOTPLUG=                                     ;;
                       traceload) TRACE_LOAD=true                                 ;;
@@ -714,7 +755,7 @@ select_breakpoints() {
     case $BREAK_POINTS in
         *\?*|*ask*)
             echo
-            echo "${m_co}Remaining $hi_co$0$m_co breakpoints:$nc_co"
+            echo "${m_co}Remaining ${hi_co}$ME$m_co breakpoints:$nc_co"
             echo
             sed -rn 's/^\s*breakpoint ([1-9a-z][0-9a-z]?)/  \1)/p' $0 | sed "s/['\"]//g" | sort
             echo
@@ -779,8 +820,8 @@ do_welcome() {
 
     [ -x /bin/ntfs-3g ] && vmsg 6 "$white  $(ntfs-3g --version 2>&1)"
 
-    vmsg 6 "%25s: $white%s"  "$0 version" "$version"
-    vmsg 6 "%25s: $white%s"  "$0 built"   "$v_date"
+    vmsg 6 "%25s: $white%s"  "initrd version" "$version"
+    vmsg 6 "%25s: $white%s"  "initrd built"   "$v_date"
 
     # Print meminfo.
     local mem_format="${m_co}%s: $num_co%5d${m_co} M"
@@ -842,18 +883,19 @@ disable_hcd() {
     for symlink in $(find $dir -name "0*" | sed 's=.*/=='); do
         echo $symlink >> $DISABLED_USB_FILE.$type
         msg 'disable %s bus: %s' $(nq $type) $(pq $symlink)
-        [ -e $kmsg ] && echo "$0 disabled $type: $symlink" >> $kmsg
+        [ -e $kmsg ] && echo "initrd disabled $type: $symlink" >> $kmsg
         echo $symlink > $dir/unbind
     done
 }
 
 load_kernel_modules() {
-    local no_load=$1 do_load=$2  file=$CUSTOM_DIR/$DISTRO_NAME/modules.load
+    local black_list=$1 do_load=$2  list=$3 file=$CUSTOM_DIR/$DISTRO_NAME/modules.load
 
-    if [ "$no_load" ]; then
-        no_load=$(echo $no_load | sed 's/VIDEO/nouveau,nvidia,i915,radeon/');
+    if [ "$black_list" ]; then
+        black_list=$(echo $black_list | sed 's/VIDEO/nouveau,nvidia,i915,radeon/');
         mkdir -p /etc/modprobe.d/
-        echo $no_load | sed 's/,/\n/g' | sed -r 's/^([a-z])/blacklist \1/' >> /etc/modprobe.d/initrd.conf
+        echo $black_list | sed 's/,/\n/g' | sed -r 's/^([a-z])/blacklist \1/' >> $BLACK_LIST_FILE
+        BLACKLIST_OPT=-b
     fi
 
     [ "$DISABLE_LOAD" ] && return
@@ -862,41 +904,59 @@ load_kernel_modules() {
     depmod &>/dev/null
 
     # These ones must be loaded before the others
-    local mod
-    for mod in $LOAD_FIRST; do
-        modprobe -q -b $mod 2>/dev/null
-    done
+    echo $LOAD_FIRST | xargs modprobe -q -a $BLACKLIST_OPT 2>/dev/null
 
     if [ -r $file -a -n "$do_load" ]; then
         vmsg 7 'Load modules from file %s' "$(fq $file)"
-        for module in $(grep -v "^\s*#" $file | sed 's/\s*#.*//' ); do
-            modprobe -q -b $module
-        done
+        grep -v "^\s*#" $file | sed 's/\s*#.*//' | xargs modprobe -a -q $BLACKLIST_OPT
     fi
-    autoload_modules 6
+
+    autoload_modules 5
+
+    for module in ${list//,/ }; do
+        case $module in
+            all) load_all_modules ;;
+              *) modprobe -q $module || warn  "Could not load module %s" $(pqw $module);;
+        esac
+    done
 }
 
 load_all_modules() {
-
+    local subdir=$1
     msg "Loading all live modules"
-    local list=$(find $MOD_DIR/live -name "*.ko" | sed -e 's=.*/==' -e 's/\.ko$//')
-    local module
-    for module in $list; do
-        modprobe -q -b $module
-    done
+    debug_cmd lsmod
+    debug_cmd lspci
+    LOAD_ALL_MODULES=true
+    find $MOD_DIR/$subdir -name "*.ko" | sed -e 's=.*/==' -e 's/\.ko$//' \
+        | xargs modprobe -q -a $BLACKLIST_OPT
+}
+
+debug_cmd() {
+    echo "==== $*"                        >> $MY_LOG
+    "$@"                                  >> $MY_LOG
+    echo "==============================" >> $MY_LOG
 }
 
 autoload_modules() {
-    local alias  module  count  verb=$1
+    local verb=$1
+
     [ "$DISABLE_LOAD" ] && return
 
-    [ "$verb" ] && vmsg $verb "Load hardware specific modules"
-    for alias in $(find /sys/devices -name modalias -print0 | xargs -0 cat 2>/dev/null| sort -u); do
-        $LIVE_BIN/modprobe -q -b $alias &>/dev/null
-        #[ "$TRACE_LOAD" ] && echo $alias >> /live/config/auto-load.log
-        local log_file=/live/config/auto-load.log
-        grep -q "^$alias$" $log_file 2>/dev/null || echo $alias >> $log_file
-    done
+    [ "$verb" ] && vmsg $verb "Loading hardware specific modules ..."
+
+    #find /sys/devices -name uevent -exec sed -n 's/^MODALIAS=//p' '{}' + 2>/dev/null \
+    #    | sort -u | xargs modprobe -a -q $BLACKLIST_OPT
+    #return
+
+    find /sys/devices -name modalias -exec cat '{}' + 2>/dev/null | sort -u \
+        | xargs modprobe -a -q $BLACKLIST_OPT 2>/dev/null
+    return
+
+    # local alias_file alias
+    # find /sys/devices -name modalias | while read alias_file; do
+    #     alias=$(cat $alias_file 2>/dev/null)
+    #     modprobe -q $BLACKLIST_OPT $alias 2>/dev/null
+    # done
 }
 
 #==============================================================================
@@ -1620,7 +1680,7 @@ mount_aufs() {
     fi
 
     # Do the actual aufs mount
-    vmsg 6 "Mount %s at %s" 'aufs' "$(fq aufs_mp)"
+    vmsg 6 "Mount %s at %s" 'aufs' "$(fq $aufs_mp)"
 
     log_cmd mount -t aufs -o "br:$aufs_arg" $aufs_mp $aufs_mp \
         || fatal "Could not mount %s" aufs
@@ -1882,6 +1942,14 @@ breakpoint() {
         msg "$bold_co$DBV=$white$val"
     fi
 
+    if [ "$DB_PLUS" ]; then
+        local now=$(get_time)
+        local delta=$(get_seconds $((now - LAST_BP_TIME)))
+        vmsg 9 "$green@bp$cyan[$num_co$bp$m_co]$hi_co $(get_seconds $now)s ($delta)$m_co: $desc"
+        LAST_BP_TIME=$now
+        [ "$TEST_FATAL" ] && [ "$TEST_FATAL" = "$bp" ] && non_fatal "Test at bp=$bp $desc"
+    fi
+
     if ! should_break_at $bp; then
 
         if [ "$TEST_ERRORS" ]; then
@@ -1890,9 +1958,6 @@ breakpoint() {
             msg "normal message two"
         fi
 
-        [ "$DB_PLUS" ] || return
-        vmsg 9 "$green@bp$cyan[$num_co$bp$m_co]$hi_co $(get_seconds)s$m_co: $desc"
-        [ "$TEST_FATAL" ] && [ "$TEST_FATAL" = "$bp" ] && non_fatal "Test at bp=$bp $desc"
         return
     fi
 
@@ -1903,7 +1968,7 @@ breakpoint() {
     local bp_time_1=$(get_time)
     env PS1="${green}bp $red$bp$cyan>$nc_co " BP=$bp PATH=$LIVE_BIN:$PATH \
         setsid cttyhack sh 17>/dev/null
-    local bp_time_2=$(get_time)
+    bp_time_2=$(get_time)
     time_0=$((time_0 + bp_time_2 - bp_time_1))
     echo
 }
@@ -1934,9 +1999,13 @@ hq()     { echo "$hi_co$*$m_co"           ;}
 
 get_time() { cut -d" " -f22 /proc/self/stat ;}
 
+show_time() {
+    msg "$(printf "$green%ss$yellow %s" $(get_seconds) "$*")"
+}
+
 get_seconds() {
     local dt=${1:-$(get_time)}
-    printf "%02d" $dt | sed -r 's/(..)$/.\1/'
+    printf "%03d" $dt | sed -r 's/(..)$/.\1/'
 }
 
 bogo_meter() {
@@ -3268,7 +3337,7 @@ _persist_makefs() {
     #[ "$needed" ] && quit=
 
     heading "create %s persistence file" "$(fq $file)"
-    vmsg 1 "Default size: %s Meg.  Default type: %s" $(nq $default_size) $(pq ext3)
+    vmsg 1 "Default size: %s Meg.  Filesystem type: %s" $(nq $default_size) $(pq ext4)
     warn "Warning: this operation can take a few minutes"
 
     if [ "$AUTO_MAKE_FS" ]; then
@@ -3283,7 +3352,7 @@ _persist_makefs() {
     fi
 
     if [ "$auto_mode" ]; then
-       fs_type=ext3
+        fs_type=ext4
         fs_size=$default_size
 
     else
@@ -3296,12 +3365,11 @@ _persist_makefs() {
 
         vmsg 1 "Filesystem size %s Meg" $(nq $fs_size)
 
-        title=$(printf "Please select file system for %s file" $(pqw $file))
-
-        echo
-        my_select "$title" fs_type 0 2 ext2 ext3 ext4 "$quit"
-        [ "$fs_type" = "quit" ] && return 1
-
+        #title=$(printf "Please select file system for %s file" $(pqw $file))
+        #echo
+        #my_select "$title" fs_type 0 2 ext2 ext3 ext4 "$quit"
+        #[ "$fs_type" = "quit" ] && return 1
+        fs_type=ext4
     fi
     vmsg 1 "Create %s file of type %s and size %s Meg" "$(fq $file)" "$(pq $fs_type)" "$(nq $fs_size)"
 
@@ -3617,31 +3685,27 @@ auto_login() {
     local dir file full prog=$1  terms=$2 root=$3
     [ -n "$prog" -a -n "$terms" ] || return
 
-    if [ "$SYSTEM_D" ]; then
-        db_msg "Enable autologin"
-        local term dir sysd_dir=$root/etc/systemd/system
-        [ -d $sysd_dir ] || return
-        for term in 2 3 4 5; do
-            dir=$sysd_dir/getty@tty$term.service.d/
-            mkdir -p $dir
-            cat << AutoLogin > $dir/autologin.conf
+    db_msg "Enable autologin"
+
+    if [ -z "$SYSTEM_D" ]; then
+        sed -i.bak -r "/autologin/! s=^([$terms]:[0-9]+:respawn:[^ ]+)=\1 --autologin root=" $root/etc/inittab
+        return
+    fi
+
+    local term dir sysd_dir=$root/etc/systemd/system
+    [ -d $sysd_dir ] || return
+    for term in $(echo $terms | sed -r 's/(.)/\1 /g'); do
+        dir=$sysd_dir/getty@tty$term.service.d/
+        mkdir -p $dir
+        cat << AutoLogin > $dir/autologin.conf
 [Service]
 ExecStart=
 ExecStart=-/sbin/agetty --autologin root --noclear %I 38400 linux
 AutoLogin
-        done
-        return
-    fi
 
-    # FIXME: does getty have --autologin now??
-    for dir in /sbin /bin /usr/sbin /usr/bin /usr/local/bin ; do
-        file=$dir/$prog
-        full=$root/$file
-        [ -e "$full" ] || continue
-        db_msg "Enable autologin"
-        sed -i "s=^\([$terms]\)\(:[0-9]\+:respawn:\).*=\1\2$file tty\1 login -f root=" $root/etc/inittab
-        break
     done
+    return
+
 }
 
 fancy_prompt() {
@@ -3781,7 +3845,7 @@ write_output_files() {
     [ true ] && cat > $out_file <<Bootstrap_Out
 #$tbar
 #              file: $out_file
-# auto-generated by: $0
+#      generated by: $ME script
 #   somewhen around: $(date)
 #$tbar
 AUFS_MP="$AUFS_MP"
@@ -3839,7 +3903,7 @@ old_write_output_files() {
     [ true ] && cat > $dir/linuxrc.out <<Linuxrc_Out
 #$tbar
 #              file: $dir/linuxrc.out
-# auto-generated by: $0
+# auto-generated by: $ME script
 #   somewhen around: $(date)
 #$tbar
 AUFS_MP="$AUFS_MP"
@@ -3918,7 +3982,7 @@ write_log_files() {
     local my_log=$1 final_log=$2 e=$(printf "\e")
     mkdir -p $(dirname $final_log)
     sed -r "s/$e\[[0-9;]+[mK]//g" $my_log > $final_log
-    cp  $my_log $final_log.color
+    cp $my_log $final_log.color
 }
 
 find_init_prog() {
@@ -3950,9 +4014,14 @@ run_init_scripts() {
 
     mkdir -p $new_root/etc/live/protect $new_root/run/lock
 
-    local script
+    local script full last_time=$(get_time)
     for script; do
-        chroot $new_root /live/etc/init.d/$script start
+        full=/live/etc/init.d/$script
+        test -x $new_root/$full || continue
+        chroot $new_root $full start
+        now=$(get_time)
+        vmsg 6 "%25s @ %s seconds" $script $(pq $(get_seconds $((now - last_time))))
+        last_time=$now
     done
 
     # Do a persist-save to save new passwords and persist save mode
@@ -3982,8 +4051,8 @@ late_umount() {
 
 prepare_switch_root() {
     local new_root=$1  live_dir=$2  final_live=$3
-
     local new_live=$new_root${final_live:-$live_dir}
+    local root_dir=""
 
     # FIXME!
     # new_live=$new_root/run/initramfs
@@ -4016,18 +4085,19 @@ prepare_switch_root() {
     done
 
     # Remove libs, modules, and programs we won't need to save a little RAM
-    rm -f $(find $live_dir/lib -type f -o -type l | egrep -v "/(live-init|ld|libc|libm)[.-][^/]*$")
+    rm -f $(find $root_dir/lib -type f -o -type l | egrep -v "/(live-init|ld|libc|libm)[.-][^/]*$")
 
-    (cd $live_dir/bin && rm -rf fbcondecor_helper ntfs-3g)
-    rm -rf /$live_dir/etc/splash
+    (cd $root_dir/bin && rm -rf fbcondecor_helper ntfs-3g)
+    rm -rf /$root_dir/etc/splash
 
     # Work around a bug in fbcondecor_helper
-    local fbsys=$live_dir/lib/splash/sys
+    local fbsys=$root_dir/lib/splash/sys
     mountpoint $fbsys &>/dev/null && umount $fbsys
 
     local dir old new
     for dir in bin config etc lib locale; do
-        old=$live_dir/$dir
+        old=$root_dir/$dir
+        test -e $old || old=$live_dir/$dir
         new=$new_live/$dir
         mkdir -p $new
         cp -a $old/* $new
