@@ -24,11 +24,15 @@ XGETTEXT_OPTS="--add-comments --language=Shell --no-location --no-wrap"
 :          ${BUGS_TO:=bitjam@gmail.com}
 :   ${COPYRIGHT_YEAR:=2012 -- $(date +%Y)}
 
+RED=$(printf "\e[0;31m")
+NC=$(printf "\e[0m")
+
 ME=${0##*/}
 MY_DIR=$(dirname $(readlink -f $0))
 
    CMD_REPLACE=$MY_DIR/replace-strings
 CMD_FIX_HEADER=$MY_DIR/fix-po-header
+LOG_FILE=$ME-err.log
 
 usage() {
     ret=${1:-0}
@@ -52,6 +56,7 @@ Options:
   -f --force           Force update even if output is newer than source
   -h --help            Show this help
   -k --skip            replace|en|strmaker|pot|mo
+  -l --log=<file>      Error log file                 :$LOG_FILE
   -m --mo-only         Only make .mo files
   -o --outdir=<dir>    Output directory               :$OUTPUT_DIR
   -p --pretend         Don't write any files
@@ -66,7 +71,7 @@ Usage
     exit $ret
 }
 
-main() {
+read_params() {
 
     local short_stack="dfhmopqrstTvV" arg val
     while [ $# -gt 0 -a -z "${1##-*}" ]; do
@@ -83,7 +88,7 @@ main() {
 
         # Deal with all options that take a parameter
         case $arg in
-            -domains|-skip|-outdir|-renames|-stop-at|-transdir|[dkorst])
+            -log|-domains|-skip|-outdir|-renames|-stop-at|-transdir|[dklorst])
                 [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
                 val=$1
                 [ -n "$val" -a -z "${val##-*}" ] \
@@ -100,6 +105,7 @@ main() {
                -full) FULL=true                        ;;
              -help|h) usage                            ;;
              -skip|k) SKIP_AT="$SKIP_AT,$val"          ;;
+              -log|l) LOG_FILE=$val                    ;;
           -mo-only|m) MO_ONLY=true                     ;;
            -outdir|o) OUTPUT_DIR=$val                  ;;
        -outdir=*|o=*) OUTPUT_DIR=$val                  ;;
@@ -115,8 +121,11 @@ main() {
           -VERBOSE|V) VERY_VERBOSE=true                ;;
                    *) fatal "Unknown parameter -$arg"  ;;
         esac
-
     done
+    FILES="$*"
+}
+
+main() {
     local domain name rename tdir po_count=0 mo_count=0 xlat_count=0
 
     case $STOP_AFTER in
@@ -266,7 +275,7 @@ prep_xlat() {
     esac
 
     case $domain in
-        init|tsplash)  init_opt=--init ;;
+        init|tsplash|umount-live)  init_opt=--init ;;
     esac
 
     local bin_file=$bin_dir/$domain
@@ -437,5 +446,7 @@ get_seconds() {
     printf "%02d" $dt | sed -r 's/(..)$/.\1/'
 }
 
-main "$@"
+read_params "$@"
 
+main $FILES 17>&1 1>&2 2>&17 | while read line; do echo "$line" \
+    | sed -e "s/^/$RED/" -e "s/$/$NC/" | tee -a $LOG_FILE; done
