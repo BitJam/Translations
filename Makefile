@@ -162,3 +162,6 @@ $(TARG_DIRS):
 
 clean:
 	rm -rf $(OUT_DIR)/* $(INITRD_DIR) $(STR_MAKER_DIR) mo-files pot-files
+
+depclean: clean
+	rm -rf Src/initrd/* make-xlat-files-err.log
