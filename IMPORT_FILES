@@ -1,8 +1,8 @@
 /init
 /lib/live-init-utils.sh
 /bin/umount-live
-/bin/tsplash
-/etc/init.d/live-shutdown
+# /bin/tsplash
+/etc/init.d/persist-autosave
 /etc/init.d/persist-password
 /etc/init.d/live-disable-services
 /etc/init.d/live-L10n
