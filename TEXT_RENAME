@@ -5,6 +5,6 @@ live-init:antix-initshpot
 live-L10n:antix-l10npot
 live-restore-services:antix-restore-servicespot
 live-disable-services:antix-disable-servicespot
-live-init-utils:antix-init-utilsshpot
+live-init-utils.sh:antix-init-utilsshpot
 
 #init:xlate-linuxrc
