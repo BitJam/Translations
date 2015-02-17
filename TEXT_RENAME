@@ -6,5 +6,6 @@ live-L10n:antix-l10npot
 live-restore-services:antix-restore-servicespot
 live-disable-services:antix-disable-servicespot
 live-init-utils.sh:antix-init-utilsshpot
+live-umount:ejectcdpot
 
 #init:xlate-linuxrc
