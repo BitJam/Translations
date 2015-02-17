@@ -275,7 +275,7 @@ prep_xlat() {
     esac
 
     case $domain in
-        init|tsplash|umount-live)  init_opt=--init ;;
+        init|tsplash|live-umount)  init_opt=--init ;;
     esac
 
     local bin_file=$bin_dir/$domain
