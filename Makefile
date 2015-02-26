@@ -2,7 +2,7 @@ SHELL           := /bin/bash
 
 PREFIX          :=
 OUT_DIR         := Output
-TRANS_DIR       := translations
+TRANS_DIR       := tx
 
 IMPORT_DIR      := ../Live-initrd
 EXPORT_DIR      := ../Xlated-initrd

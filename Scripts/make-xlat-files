@@ -1,7 +1,7 @@
 #!/bin/bash
 
    OUTPUT_DIR=Output
-    TRANS_DIR=translations
+    TRANS_DIR=tx
       PROJECT=antix-development
   DOMAIN_FILE=TEXT_DOMAINS
   RENAME_FILE=TEXT_RENAME
