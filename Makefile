@@ -76,7 +76,7 @@ help:
 	@echo "     uninstall: Delete installed files and directories."
 	@echo ""
 	@echo "NOTE: Use PREFIX variable to install someplace other than ./"
-	@echo "NOTE: INITRD_IDIR variable controls where install-initrd installs"
+	@echo "NOTE: EXPORT_DIR variable controls where install-initrd installs"
 	@echo "NOTE: Put custom variables in Makefile.local"
 
 all: mo xlat
@@ -87,8 +87,8 @@ import:
 	Scripts/import-files $(IMPORT_DIR) Src/initrd IMPORT_FILES
 
 export:
-	rm -rf $(EXPORT_DIR)
 	mkdir -p $(EXPORT_DIR)
+	rm -rf $(EXPORT_DIR)/[a-z]*
 	cp -a $(IMPORT_DIR)/[a-z]* $(EXPORT_DIR)/
 	cp -a Initrd/* $(EXPORT_DIR)/
 
@@ -142,9 +142,9 @@ validate:
 install-initrd:
 	$(CMD_MAKE_XLAT) --verbose --force --stop-at=en $(INITRD_SRC)
 	@#$(CMD_MAKE_XLAT) --verbose --force init
-	chmod a+x $(INITRD_DIR)/init $(INITRD_DIR)/live/bin/*
+	chmod a+x $(INITRD_DIR)/init $(INITRD_DIR)/bin/*
 	/live/bin/sh -n $(INITRD_DIR)/init
-	[ -d "$(INITRD_IDIR)" ] && cp -a $(INITRD_DIR)/* $(INITRD_IDIR)
+	[ -d "$(EXPORT_DIR)" ] && cp -a $(INITRD_DIR)/* $(EXPORT_DIR)
 
 install: $(TARG_FILES)
 	@:
