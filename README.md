@@ -238,7 +238,6 @@ Directories
     string-maker/
     mo-files/
 
-
 Counting files (as of Sat March 8, 2014)
 ----------------------------------------
   955 .po files on transifex all
@@ -249,3 +248,47 @@ Counting files (as of Sat March 8, 2014)
   601 .mo files total
 
 Okay.  There are 37 .po files that aren't used.
+
+STOP STRINGS
+------------
+
+y current wacky idea is a "STOP_STRINGS" file.  Any string in this
+file does not get translated.  I also make a make-stop-strings script
+that creates a candidate for the STOP_STRINGS file in the file stop2.
+The stop1 file is an intermediate file that provides a bit of context.
+
+The make-stop-string script looks for source lines that match:
+
+   (vmsg [6-9]|warn|err|\<non_fatal) 
+
+followed by a space. These tend to be message that don't show up
+during normal operation and hence should have a lower priority for
+being translated.  With this mechanism, I've cut the number of
+translation strings down to 123.
+
+Notes:
+------
+
+Make stop2 file with:
+
+    Scripts/make-stop-strings
+
+Compare it with existing STOP_STRINGS file and then copy it over
+or copy in lines or whatever.
+
+Get a list of strings that will be translated:
+
+    Scripts/replace-strings --init -m strings Src/initrd/init.src 
+
+Quickly update the export directory (not all translations will be
+included but there should be no breakage):
+
+    make import install-initrd
+
+Update all translations as well.  This takes longer but is needed
+if you want the latest translations and you are not just testing:
+
+    make import initrd export
+
+
+
