@@ -1,0 +1,86 @@
+            got: %s
+          Total
+         wanted: %s
+%s device %s has not been checked in %s days.  Check forced.
+%s device %s has not been checked in %s mounts.  Check forced.
+%s device %s not cleanly unmounted.  Check forced.
+%s device model: %s
+%s module(s) failed to load
+%s persistence was requested but no %s file was found
+At least one md5 checksum did not match
+But did not find file %s on the device
+Can't perform %s check
+Can't update %s on read-only boot media
+Can't use %s as a persistence device
+Cannot label a %s filesystem
+Copy failed.  Cannot do %s
+Copy failed.  Erasing partial copy
+Copy persistent root to RAM failed!  Will erase partial copy ...
+Copy persistent root to RAM succeeded
+Copy was incomplete. The %s failed
+Could not determine filesystem on %s
+Could not enable required %s persistence
+Could not find %s device with %s
+Could not find a partition with label %s
+Could not find any persistence files
+Could not find file %s for required %s persistence
+Could not find persistence device
+Could not find script %s
+Could not load module %s
+Could not make frugal directory
+Could not mount %s for copy
+Could not mount file %s for %s persistence
+Could not mount frugal device %s
+Could not remount the persistence device
+Create %s at %s
+Did not enable %s persistence
+Directory %s does not exist
+Disable %s persistence
+Disable persistence
+Don't have the %s tool to label a %s filesystem
+Failed to create filesystem.  Deleting %s file
+Found %s device with %s
+Found root device %s but not partition %s
+Frugal install failed (or was teminated)
+Have %s Megabytes free.  Need %s
+In directory %s one or more of these files already exist
+Invalid %s values(s) %s
+Loaded %s module(s)
+Mount %s at %s
+Mount file %s at %s
+No %s found at %s
+No %s or %s found
+No device with %s was found
+No md5 checksums were found in %s. Can't do any md5 checks.
+No suitable devices were found.
+Not checking persist filesystem because it can't be unmounted
+Not enough RAM available to do %s
+Not enough RAM to hold persistent root
+Not enough free space on device %s to do install
+Not enough room on Live device to create %s file of size %s Meg
+Not enough room to copy home filesystem
+Not enough space on device to create %s file
+Only small integer values are allowed for %s.  Will ignore %s
+Persistence was requested on a read-only boot device
+Put persistent root in RAM (from %s)
+Remaster the file %s to %s
+Roll back file %s to %s
+Run the %s program to fix this problem
+Spent %s seconds looking for %s file(s) %s
+Start %s process
+The %s program failed.  Will not resize %s
+The boot parameter %s was given but no %s was found
+The destination file is missing. The %s has failed.
+The frugal install succeeded
+Unable to mount %s.  Will not do %s
+Unable to unmount %s
+Valid values: %s
+Warning: this can take several minutes per Gig on a %s file system
+Will not remaster
+Will not remaster %s twice
+Will search for a persistence device with the label %s
+Will start normal boot to do frugal install
+You need to %s or use %s persistence
+command %s took %s seconds
+have %s RAM, needed %s
+precheck filesystem on %s

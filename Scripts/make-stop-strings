@@ -1,0 +1,28 @@
+#!/bin/bash
+
+src=Src/initrd/init.src
+NON_STOP="fatal error|non-fatal error|continue"
+STOP_KEYS="vmsg [6-9]|warn|err|\<non_fatal"
+
+egrep "($STOP_KEYS) " $src > stop1
+Scripts/replace-strings --no-stop --mode=strings --init stop1 \
+    | sort -u \
+    | egrep -vi "^($NON_STOP)$" > stop2
+
+cat <<Blurb
+
+$0 made files: stop1 and stop2.
+
+The stop1 file is intermediate, containing strings from $src.
+
+The stop2 file is a candidate for STOP_STRINGS which contains
+a list of strings that will not be translated.
+
+You can adjust the behavior by editing these two variables:
+
+STOP_KEYS: $STOP_KEYS
+ NON_STOP: $NON_STOP
+
+ Blurb
+
+
