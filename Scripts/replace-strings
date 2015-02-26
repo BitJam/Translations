@@ -18,6 +18,10 @@ my ($INIT_FORMAT, $DOMAIN, $LOCATION, $OUT_FILE);
 
 my @MODES = qw(fancy plain replace strings);
 
+my $NO_STOP;
+my $STOP_FILE = "STOP_STRINGS";
+my %STOP_STRINGS;
+
 my $USAGE = <<Usage;
 Usage: $ME [options] file1 file2 ...
 
@@ -46,11 +50,16 @@ Options
     --keys <a,b,c>    Words to key translation off of:
                       Default: @KEY_WORDS
     --mode=<mode>     fancy|plain|replace|strings
+    --no-stop         Don't read STOP_STRINGS file
     --output=<file>   Send output to <file> instead of stdout
     --quiet           print less
     --STOP <words>    Ignore text preceded by any of these words
     --up              Convert all strings to uppercase for testing
     --verbose         Print more
+
+If the file STOP_STRINGS exists then we will ignore any string that
+matches a line in that file.
+
 Usage
 
 GetOptions(
@@ -64,6 +73,7 @@ GetOptions(
     "output=s"     => \$OUT_FILE,
     "quiet"        => \$QUIET,
     "STOP=s"       => \$STOP_WORDS,
+    "no-stop"      => \$NO_STOP,
     "up"           => \$UP,
     "verbose"      => \$VERBOSE,
 ) or die $USAGE;
@@ -104,6 +114,15 @@ export TEXTDOMAIN=$DOMAIN
 
 PREAMBLE
 
+-e $STOP_FILE and not $NO_STOP and do {
+    open my $stop_handle, "<", $STOP_FILE or die "Could not open($STOP_FILE) $!";
+    while (<$stop_handle>) {
+        chomp;
+        $STOP_STRINGS{$_}++;
+    }
+    close $stop_handle;
+};
+
 $INIT_FORMAT and $STOP_WORDS ||= "log,db_msg,breakpoint,vmsg_if";
 $STOP_WORDS ||= "#";
 
@@ -111,6 +130,7 @@ my $STOP_REGEX = "^\\s*(:?#|" . join("|", split ",", $STOP_WORDS) . ")";
 $STOP_REGEX =~ s/(\w)([|)])/$1\\b$2/g;
 
 my $KEY_WORD_REGEX = @KEY_WORDS ? "\\b" . join("|", @KEY_WORDS) : "";
+
 
 while (<>) {
     m/$STOP_REGEX/ or do {
@@ -182,6 +202,8 @@ Unicode_printf
 
 sub replace_string {
     my ($key_word, $string) = @_;
+    $STOP_STRINGS{$string} and return qq{$key_word "$string"};
+
     my $label = $string;
     $UP and do {
         $string = uc $string;
