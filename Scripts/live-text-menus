@@ -27,9 +27,9 @@ options_menu() {
 
 persist_menu() {
     pfm   "$(gettext Default)"
-    pfm   "persist_all"      "$(gettext "Both root and home persistence (uses persist-save)")"
-    pfm   "persist_root"     "$(gettext "Only root persistence (uses persist-save)")"
-    pfm   "persist_static"   "$(gettext "Home and root persistence (slower but no persist-save)")"
+    pfm   "persist_all"      "$(gettext "Fast. Saves root and home (uses RAM, saves at shutdown)")"
+    pfm   "persist_root"     "$(gettext "Fast. Only saves root (uses RAM, saves at shutdown)")"
+    pfm   "persist_static"   "$(gettext "Slow. Saves root and home (no RAM use, saves constantly)")"
     pfm   "persist_home"     "$(gettext "Only home persistence")"
     pfm   "frugal_persist"   "$(gettext "Frugal with both root and home persistence")"
     pfm   "frugal_root"      "$(gettext "Frugal with only root persistence")"
