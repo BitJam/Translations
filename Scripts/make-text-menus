@@ -1,0 +1,308 @@
+#!/bin/bash
+
+
+SELF=$(readlink -f $0)
+MY_DIR=$(dirname $SELF)
+
+MENU_FILE=live-text-menus
+FULL_MENU_FILE=$MY_DIR/$MENU_FILE
+
+ME=${0##*/}
+
+export TEXTDOMAIN=$MENU_FILE
+
+: ${COPYRIGHT_HOLDER:=antiX and Mepis}
+:     ${PACKAGE_NAME:=antiX Development}
+:          ${BUGS_TO:=bitjam@gmail.com}
+:   ${COPYRIGHT_YEAR:=2012 -- $(date +%Y)}
+
+XGETTEXT_OPTS="--add-comments --language=Shell --no-location --no-wrap"
+#XGETTEXT_OPTS="--add-comments --language=Shell --no-wrap"
+
+POT_DIR=pot-files
+OUT_DIR=text-menus
+
+#PRETEND=true
+
+menu_format=" %3s)  %-15s %s\n"
+save_format=" %3s)  %s\n"
+
+DEFAULT="%DEFAULT%"
+MO_DIR=mo-files
+PROJECT=antix-development
+
+MENU_LIST="Options Persist Save"
+
+TRANS_DIR=tx
+
+. $FULL_MENU_FILE
+
+usage() {
+    local ret=${1:-0}
+
+     cat <<Usage
+Usage:  $ME [options] <command>
+
+Commands:
+  master    Create a set of translated menus for all of the below
+  Options   Create an Options menu
+  Persist   Create a Persist menu
+  Save      Create a Save menu
+
+Options:
+  -d  --dir=<dir>           Create menus under the <dir> directory
+  -f  --force               Force file creation
+  -h  --help                Show this usage
+  -o  --output=<file>       Send output to <file> instead of stdout
+  -p  --pretend             Show what would be done but don't do anything
+  -v  --verbose             Print more
+Usage
+
+    exit $ret
+}
+
+eval_argument() {
+    local arg=$1 val=$2
+    case $arg in
+                   -dir|d) OUT_DIR=$val                    ;;
+               -dir=*|d=*) OUT_DIR=$val                    ;;
+                 -force|f) FORCE=true                      ;;
+                  -help|h) usage                           ;;
+                -output|o) OUT_FILE=$val                   ;;
+            -output=*|o=*) OUT_FILE=$val                   ;;
+               -pretend|p) PRETEND=true                    ;;
+        -textdomain=*|t=*) export TEXTDOMAN=$value         ;;
+               -verbose|v) VERBOSE=true                    ;;
+                        *) fatal "Unknown argument: -$arg" ;;
+    esac
+}
+
+takes_param() {
+    case $1 in
+        -dir|-output|[do]) return 0 ;;
+    esac
+    return 1
+}
+
+main() {
+
+    [ $# -eq 0 ] && usage
+
+    local SHIFT SHORT_STACK="dfhpv"
+    read_params "$@"
+    shift $SHIFT
+
+    [ $# -lt 1 ] && fatal "Expected a command"
+    local command=$1
+    shift
+
+    read_params "$@"
+    shift $SHIFT
+
+    [ $# -gt 0 ] && fatal "Extra command line arguments: $*"
+
+    export TEXTDOMAINDIR=$PWD/$MO_DIR
+    export TEXTDOMAIN=$TEXTDOMAIN
+
+    local cnt=1
+    case $command in
+         master) do_master                          ;;
+        Options) output_to "$OUT_FILE" options_menu ;;
+        Persist) output_to "$OUT_FILE" persist_menu ;;
+           Save) output_to "$OUT_FILE" save_menu    ;;
+              *) fatal "Uknown command: $command"   ;;
+    esac
+}
+
+
+do_master() {
+    export TEXTDOMAINDIR=$PWD/$MO_DIR
+    export TEXTDOMAIN=$TEXTDOMAIN
+
+    local tx_dir po_file lang mo_file menu
+
+    local name=$TEXTDOMAIN
+    local domain=$TEXTDOMAIN
+
+    local pot_file=$POT_DIR/$MENU_FILE.pot
+
+    tx_dir=$TRANS_DIR/$PROJECT.$name
+    if not_older $pot_file $SELF $FULL_MENU_FILE; then
+        vsay "> $pot_file"
+        pretend mkdir -p $POT_DIR
+        pretend xgettext $XGETTEXT_OPTS \
+            --copyright-holder="$COPYRIGHT_HOLDER" \
+            --package-name="$PACKAGE_NAME" \
+            --msgid-bugs-address="$BUGS_TO" \
+            -o $pot_file $FULL_MENU_FILE
+    fi
+
+    pretend mkdir -p $OUT_DIR
+    for file in $OUT_DIR/*.menu.*; do
+        test -e $file && pretend rm $file
+    done
+
+    local menu ofile
+    for menu in $MENU_LIST; do
+        ofile=$OUT_DIR/$menu.menu
+        if not_older $ofile  $SELF $FULL_MENU_FILE; then
+            vsay "> $ofile"
+            pretend $SELF --output=$ofile $menu
+        fi
+    done
+
+    for po_file in $tx_dir/*.po; do
+        [ -f $po_file ] || continue
+        local cnt=$(grep -c 'msgstr "..*"' $po_file)
+
+        [ $cnt -ge 2 ] || continue
+
+        lang=$(basename $po_file .po)
+
+        #echo $lang: $cnt
+        # Ignore _XX langs
+        #[ -z "${lang##*_*}" ] && continue
+
+        mo_file=$MO_DIR/$lang/LC_MESSAGES/$domain.mo
+        if not_older $mo_file $po_file; then
+            vsay "  > $mo_file"
+            pretend mkdir -p $(dirname $mo_file)
+            pretend msgfmt -o $mo_file $po_file && mo_count=$((mo_count + 1))
+        fi
+
+        for menu in $MENU_LIST; do
+            ofile=$OUT_DIR/$menu.menu.$lang
+            if not_older $ofile $mo_file $SELF $FULL_MENU_FILE; then
+                vsay "> $ofile"
+                LANGUAGE=$lang pretend $SELF --output=$ofile $menu
+            fi
+        done
+    done
+
+}
+
+output_to() {
+    local file=$1 
+    shift;
+
+    if [ -n "$file" ]; then
+        mkdir -p $(dirname $file)
+        "$@" > $file
+    else
+        "$@"
+    fi
+}
+
+
+pfm() { 
+    printf "$menu_format" $cnt "$@" 
+    cnt=$((cnt +1))
+}
+
+pfs() { 
+    printf "$save_format" $cnt "$@"
+    cnt=$((cnt +1))
+}
+#-------------------------------------------------------------------------------
+# Send "$@".  Expects
+#
+#   SHORT_STACK               variable, list of single chars that stack
+#   fatal(msg)                routine,  fatal("error message")
+#   takes_param(arg)          routine,  true if arg takes a value
+#   eval_argument(arg, [val]) routine,  do whatever you want with $arg and $val
+#
+# Sets "global" variable SHIFT to the number of arguments that have been read.
+#-------------------------------------------------------------------------------
+read_params() {
+    # Most of this code is boiler-plate for parsing cmdline args
+    SHIFT=0
+    # These are the single-char options that can stack
+
+    local arg val
+
+    # Loop through the cmdline args
+    while [ $# -gt 0 -a ${#1} -gt 0 -a -z "${1##-*}" ]; do
+        arg=${1#-}
+        shift
+        SHIFT=$((SHIFT + 1))
+
+        # Expand stacked single-char arguments
+        case $arg in
+            [$SHORT_STACK][$SHORT_STACK]*)
+                if echo "$arg" | grep -q "^[$SHORT_STACK]\+$"; then
+                    local old_cnt=$#
+                    set -- $(echo $arg | sed -r 's/([a-zA-Z])/ -\1 /g') "$@"
+                    SHIFT=$((SHIFT - $# + old_cnt))
+                    continue
+                fi;;
+        esac
+
+        # Deal with all options that take a parameter
+        if takes_param "$arg"; then
+            [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
+            val=$1
+            [ -n "$val" -a -z "${val##-*}" ] \
+                && fatal "Suspicious argument after -$arg: $val"
+            SHIFT=$((SHIFT + 1))
+            shift
+        else
+            case $arg in
+                *=*)  val=${arg#*=} ;;
+                  *)  val="???"     ;;
+            esac
+        fi
+
+        eval_argument "$arg" "$val"
+    done
+}
+
+is_older() {
+    local targ=$1 sorc
+    shift
+
+    [ "$FORCE" ] && return 0
+    [ -f $targ ] || return 0
+    local targ_time=$(stat -c %Y $targ)
+
+    for sorc; do
+        local sorc_time=$(stat -c %Y $sorc)
+        [ $targ_time -lt $sorc_time ] && return 0
+    done
+    return 1
+}
+
+not_older() {
+    local targ=$1 sorc
+    shift
+
+    [ "$FORCE" ] && return 0
+    [ -f $targ ] || return 0
+    local targ_time=$(stat -c %Y $targ)
+
+    for sorc; do
+        local sorc_time=$(stat -c %Y $sorc)
+        [ $targ_time -lt $sorc_time ] && return 0
+    done
+    return 1
+}
+
+fatal() {
+    echo "$ME fatal error: $*" >&2
+    exit 2
+}
+
+pretend() {
+    [ "$PRETEND" ] && echo "$*"
+    [ "$PRETEND" ] || "$@"
+}
+
+vsay() {
+    [ -n "$VERBOSE" ] || return
+    printf "$@"
+    echo
+}
+
+
+main "$@"
+
+

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+for full in $(find Src/initrd -name "*.src"); do
+    base=$(basename $full .src)
+    echo -e "\n>>>>>> $base"
+    case $base in
+        init|tsplash|live-umount) init_opt=--init;;
+    esac
+    Scripts/replace-strings --mode=strings $init_opt $full \
+        | grep -v  "^#" | sort -u | sed 's/^/  /'
+done

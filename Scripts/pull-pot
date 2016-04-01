@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for proj in $(grep -v "^\s*#" RESOURCES | sed 's/\s*#.*//'); do
+    full=antix-development.$proj
+    echo $full
+    tx pull -r $full -s
+done

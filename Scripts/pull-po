@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for proj in $(cat RESOURCES ANTIX_NAMES | grep -v "^\s*#" | sed 's/\s*#.*//' \
+    | tr 'A-Z' 'a-z'); do
+    full=antix-development.$proj
+    echo $full
+    tx pull -r $full -a
+done

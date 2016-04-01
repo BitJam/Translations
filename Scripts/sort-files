@@ -1,0 +1,22 @@
+#!/bin/bash
+
+error() {
+    echo "$*"
+    exit 2
+}
+
+[ "$1" -a -d "$1" ] || error "Must supply a directory"
+dir=$1
+new_dir=$dir-sorted
+
+test -d $new_dir && rmdir -p $new_dir
+
+[ -d $new_dir ] && error "Directory $new_dir is not empty"
+
+mkdir -p $new_dir
+
+for from in $dir/*; do
+    file=$(basename $from)
+    to=$new_dir/$file
+    grep "^msgid" $from | sort > $to
+done

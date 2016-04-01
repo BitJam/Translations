@@ -1,0 +1,45 @@
+options_menu() {
+#-----------------------------------------------------------------------------
+# TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING
+#
+# Please do not translate yet
+#
+# TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING
+#-----------------------------------------------------------------------------
+    pfm   "$(gettext Default)"
+    pfm   "checkmd5"         "$(gettext "Check integrity of the live media")"
+    pfm   "checkfs"          "$(gettext "Check LiveUSB ext2/3/4 and persistent file systems")"
+    pfm   "toram"            "$(gettext "Copy the compressed file system to RAM")"
+    pfm   "from=usb"         "$(gettext "Finish booting from a LiveUSB")"
+    pfm   "nousb2"           "$(gettext "Disable all usb-2 devices while booting")"
+    pfm   "automount"        "$(gettext "Automatically mount devices when plugged in")"
+    pfm   "mount=usb"        "$(gettext "... and mount all usb devices at boot time")"
+    pfm   "mount=all"        "$(gettext "... and mount ALL devices at boot time")"
+    pfm   "mount=off"        "$(gettext "Disable all extra mounting")"
+    pfm   "hwclock=ask"      "$(gettext "Have the system help determine the clock setting")"
+    pfm   "hwclock=utc"      "$(gettext "Hardware clock uses UTC (Linux-only systems)")"
+    pfm   "hwclock=local"    "$(gettext "Hardware clock uses local time (Windows systems)")"
+    pfm   "private"          "$(gettext "Change passwords before booting")"
+    pfm   "nostore"          "$(gettext "Disable LiveUSB-Storage feature")"
+    pfm   "savestate"        "$(gettext "Save some files across reboots (LiveUSB only)")"
+    pfm   "nosavestate"      "$(gettext "Don't save files across reboots (LiveUSB only)")"
+}
+
+persist_menu() {
+    pfm   "$(gettext Default)"
+    pfm   "persist-all"      "$(gettext "Both root and home persistence (uses persist-save)")"
+    pfm   "persist-root"     "$(gettext "Only root persistence (uses persist-save)")"
+    pfm   "persist-static"   "$(gettext "Home and root persistence (slower but no persist-save)")"
+    pfm   "persist-home"     "$(gettext "Only home persistence")"
+    pfm   "frugal-persist"   "$(gettext "Frugal with both root and home persistence")"
+    pfm   "frugal-root"      "$(gettext "Frugal with only root persistence")"
+    pfm   "frugal-static"    "$(gettext "Frugal with home and static root persistence")"
+    pfm   "frugal-home"      "$(gettext "Frugal with only home persistence")"
+    pfm   "frugal-only"      "$(gettext "Only Frugal, no persistence")"
+}
+
+save_menu() {
+    pfs  "$(gettext "Yes (default)")"
+    pfs  "$(gettext "No")"
+}
+

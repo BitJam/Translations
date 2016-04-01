@@ -1,17 +1,17 @@
 #!/bin/bash
 
-      ME=$(basename $0)
+       ME=$(basename $0)
 
 DIFF_OPTS="-w -U 0"
-VERBOSE=
-  QUIET=
-    EXT=".xlat"
+  VERBOSE=
+    QUIET=
+      EXT=".xlat"
 
- CHECKED=0
-FAILED=0
-PASSED=0
+  CHECKED=0
+   FAILED=0
+   PASSED=0
 
-TEMP_DIR=/tmp/$(basename $0 .sh)
+ TEMP_DIR=/tmp/$(basename $0 .sh)
 
 usage() {
     local ret=${1:-0}
@@ -21,8 +21,8 @@ Usage: $ME [options] file file dir ...
 Check validity of .xlat shell scripts by sourcing the script and
 then regenerating it and comparing the copy with the original.
 Any difference indicate something is wrong when reading the
-script, likely the problem is related to problems with the
-shell reading unicode.
+script.  It's likely the problem is related to unicode characters
+or with backslashes or dollar signs added to a translated string.
 
 Checks all files given on the command line.  If a directory is
 given then check all .xlat files found under that directory.
@@ -94,11 +94,15 @@ main() {
 }
 
 validate_xlat() {
-    local file="$1"
+    local file=$1
 
     if [ ! -r $file ]; then
         err "Could not read file $file"
         return
+    fi
+    if [ $(stat -c %s $file) -eq 0 ]; then
+        qsay "Skipping empty file: $file"
+        return 0
     fi
 
     CHECKED=$((CHECKED + 1))

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-   OUTPUT_DIR=Output
+   OUTPUT_DIR=
     TRANS_DIR=tx
       PROJECT=antix-development
   DOMAIN_FILE=TEXT_DOMAINS
@@ -8,7 +8,7 @@
 STR_MAKER_DIR=string-maker
    INITRD_DIR=Initrd
        MO_DIR=mo-files
-  MO_ONLY_DIR=/usr/share/locale
+  MO_ONLY_DIR=locale
       POT_DIR=pot-files
      XLAT_DIR=/usr/share/antiX/init-xlat
       SRC_DIR=Src
@@ -60,6 +60,7 @@ Options:
   -m --mo-only         Only make .mo files
   -o --outdir=<dir>    Output directory               :$OUTPUT_DIR
   -p --pretend         Don't write any files
+  -P --pull            Pull latest .po file from transifex site
   -q --quiet           Only print errors and warnings
   -r --renames=<file>  File containing renamings      :$RENAME_FILE
   -s --stop-at=<where> replace|en|strmaker|pot|mo
@@ -110,6 +111,7 @@ read_params() {
            -outdir|o) OUTPUT_DIR=$val                  ;;
        -outdir=*|o=*) OUTPUT_DIR=$val                  ;;
           -pretend|p) PRETEND=true                     ;;
+             -pull|P) PULL=true                        ;;
             -quiet|q) QUIET=true                       ;;
           -renames|r) RENAME_FILE=$val                 ;;
       -renames=*|r=*) RENAME_FILE=$val                 ;;
@@ -166,31 +168,37 @@ main() {
         else
             name=$(echo $domain | tr 'A-Z' 'a-z' | sed 's/\.//g')
         fi
+        if [ "$PULL" ]; then
+            tx pull -r $PROJECT.$name -a
+        fi
 
+        local src_file
         # Only used in xlat mode but no harm to always do it
-        local src_file=$(find $SRC_DIR -name $domain.src)
+        if [ -z "$MO_ONLY" ]; then
+            local src_file=$(find $SRC_DIR -name $domain.src)
 
-        if [ -z "$src_file" ]; then
-            warn "Could not find source file for domain $domain"
-            continue
+            if [ -z "$src_file" ]; then
+                warn "Could not find source file for domain $domain"
+                continue
+            fi
+
+            if [ "$(echo $src_file | wc -w)" -gt 1 ]; then
+                warn "Multiple source files with name $domain.src"
+                continue
+            fi
+
+            local xlat_dir
+            case $src_file in
+            */initrd/*)  xlat_dir=$INITRD_DIR/live/locale/xlat;;
+              */sqfs/*)  xlat_dir=$OUTPUT_DIR$XLAT_DIR ;;
+                     *)  fatal "no xlat_dir for $input_file"
+            esac
+
+            local str_maker=$STR_MAKER_DIR/$domain.str
+
+            [ -z "$MO_ONLY" ] && prep_xlat $src_file $domain $name
+
         fi
-
-        if [ "$(echo $src_file | wc -w)" -gt 1 ]; then
-            warn "Multiple source files with name $domain.src"
-            continue
-        fi
-
-        local xlat_dir
-        case $src_file in
-        */initrd/*)  xlat_dir=$INITRD_DIR/live/locale/xlat;;
-          */sqfs/*)  xlat_dir=$OUTPUT_DIR$XLAT_DIR ;;
-                 *)  fatal "no xlat_dir for $input_file"
-        esac
-
-        local str_maker=$STR_MAKER_DIR/$domain.str
-
-        [ -z "$MO_ONLY" ] && prep_xlat $src_file $domain $name
-
         stem=$TRANS_DIR/$PROJECT.$name
         if ! tdir=$(find_tdir $stem); then
             warn "Could not find translations directory for $domain / $name"
@@ -240,7 +248,13 @@ main() {
 
                 [ -n "$PRETEND" -a -n "$VERY_VERBOSE" ] \
                     && echo "LANGUAGE=$lang $str_maker | sort -u | comm -23 - $en_file > $xlat_file"
-                xlat_count=$((xlat_count + 1))
+                local size=$(stat -c %s $xlat_file)
+                if [ $size -eq -0 ]; then
+                    say "Removing zero-sized xlat file: $xlat_file"
+                    rm $xlat_file
+                else
+                    xlat_count=$((xlat_count + 1))
+                fi
             fi
 
         done
@@ -348,7 +362,6 @@ _find_tdir() {
     return 1
 }
 
-
 not_skip_or_older() {
     local stage=$1
     shift
@@ -433,6 +446,7 @@ vvsay() {
     printf "$@"
     echo
 }
+
 vvsayp() {
     [ -n "$VERY_VERBOSE" ] || return
     plural "$@"

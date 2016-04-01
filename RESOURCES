@@ -1,0 +1,21 @@
+live-bootloader
+live-disable-services
+live-hwclock
+live-init
+live-init-utils
+live-initrd-init
+live-l10n
+live-restore-services
+live-umount
+live-usb-save
+persist-autosave
+persist-password
+
+live-text-menus
+
+# persist-config
+# persist-makefs
+
+# persist-save
+# remaster-me
+# toram-eject

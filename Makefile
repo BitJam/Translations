@@ -1,7 +1,7 @@
 SHELL           := /bin/bash
 
+DISTRO          := antiX
 PREFIX          :=
-OUT_DIR         := Output
 TRANS_DIR       := tx
 
 IMPORT_DIR      := ../Live-initrd
@@ -12,19 +12,18 @@ DOMAINS_FILE    := ANTIX_NAMES
 
 -include Makefile.local
 
-XLAT_DIR        := $(OUT_DIR)/usr/share/antiX/init-xlat
 INITRD_DIR      := Initrd
 INITRD_XLAT_DIR := $(INITRD_DIR)/live/locale/xlat
 
 STR_MAKER_DIR   := string-maker
-MO_DIR          := $(OUT_DIR)/usr/share/locale
 
 SCRIPT_DIR      := Scripts
-STD_OPTS        := --outdir=$(OUT_DIR)
+STD_OPTS        := 
 CMD_MAKE_XLAT   := $(SCRIPT_DIR)/make-xlat-files $(STD_OPTS)
-CMD_MAKE_MO     := $(SCRIPT_DIR)/make-xlat-files --mo-only $(STD_OPTS)
+CMD_MAKE_MO     := $(SCRIPT_DIR)/make-xlat-files --mo-only
 CMD_MAKE_MO     += --domains $(DOMAINS_FILE)
 
+CMD_TEXT_MENUS  := $(SCRIPT_DIR)/make-text-menus
 CMD_VALIDATE    := $(SCRIPT_DIR)/validate-xlat
 CMD_REPLACE     := $(SCRIPT_DIR)/replace-strings
 XGETTEXT        := xgettext --add-comments --language=Shell --no-location
@@ -32,16 +31,18 @@ XGETTEXT        := xgettext --add-comments --language=Shell --no-location
 CP_OPTS    		:= --no-dereference --preserve=mode,ownership,links
 FIND_OPTS  		:= -not -type d
 
-SRC_FILES       := $(shell find $(OUT_DIR) $(FIND_OPTS))
-TARG_FILES 		:= $(patsubst $(FROM_DIR)%,$(PREFIX)%, $(SRC_FILES))
-TARG_DIRS  		:= $(sort $(dir $(TARG_FILES)))
 LIVE_INIT_SRC   := Src/initrd/init.src
 INITRD_SRC      := $(shell find Src/initrd -name "*.src")
 
+RESOURCES       := $(shell grep -v "^\s*\#" ./RESOURCES | sed "s/\s*\#.*//")
+
 .PHONY:  help help-more all force-all xlat force-xlat mo force-mo validate
 .PHONY:  initrd install-initrd install uninstall clean bump import export
+.PHONY:  push-pot pull-po text-menus
 
 help:
+	@echo "FIXME: This is old and outdated"
+	@echo ""
 	@echo "Common targets for \"make\" command:"
 	@echo ""
 	@echo "           all: Create everything (= xlat + mo)."
@@ -78,6 +79,8 @@ help:
 	@echo "NOTE: Use PREFIX variable to install someplace other than ./"
 	@echo "NOTE: EXPORT_DIR variable controls where install-initrd installs"
 	@echo "NOTE: Put custom variables in Makefile.local"
+	@echo
+	@echo "$(RESOURCES)"
 
 all: mo xlat
 
@@ -91,6 +94,7 @@ export:
 	rm -rf $(EXPORT_DIR)/[a-z]*
 	cp -a $(IMPORT_DIR)/[a-z]* $(EXPORT_DIR)/
 	cp -a Initrd/* $(EXPORT_DIR)/
+	rm -rf $(EXPORT_DIR)/live/locale/xlat/ja*
 
 xlat:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
@@ -112,15 +116,22 @@ force-mo:
 	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_MO) --verbose
 
+install-mo: 
+	for f in $$(cat $(DOMAINS_FILE)); do find Output -name $$f.mo; done
+
 initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose $(INITRD_SRC)
+	$(CMD_TEXT_MENUS) --verbose --dir=Initrd/live/custom/$(DISTRO)/menus master
 
 force-initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose --force $(INITRD_SRC)
+
+text-menus:
+	$(CMD_TEXT_MENUS) --verbose --dir=Initrd/live/custom/$(DISTRO)/menus master
 
 bump:
 	sed -i -r "s/^(\s*VERSION_DATE=).*/\1\"$$(date)\"/" $(LIVE_INIT_SRC)
@@ -130,10 +141,8 @@ bump:
 		  sed -r -n "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/p" $(LIVE_INIT_SRC); \
 		  sed -r -i "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/" $(LIVE_INIT_SRC)
 
-
-
 validate:
-	$(CMD_VALIDATE) $(XLAT_DIR) $(INITRD_XLAT_DIR)
+	$(CMD_VALIDATE) $(INITRD_XLAT_DIR)
 
 #initrd: Src/initrd/init.src
 #	$(CMD_REPLACE) --init --mode=replace -o $(INITRD_DIR)/init $<
@@ -146,22 +155,8 @@ install-initrd:
 	/live/bin/sh -n $(INITRD_DIR)/init
 	[ -d "$(EXPORT_DIR)" ] && cp -a $(INITRD_DIR)/* $(EXPORT_DIR)
 
-install: $(TARG_FILES)
-	@:
-
-$(TARG_FILES): $(PREFIX)% : $(FROM_DIR)% | $(TARG_DIRS)
-	@echo "Install $@"
-	@cp $(CP_OPTS) $< $@
-
-uninstall:
-	rm -f $(TARG_FILES)
-	rmdir -p --ignore-fail-on-non-empty $(TARG_DIRS)
-
-$(TARG_DIRS):
-	mkdir -p $@
-
 clean:
-	rm -rf $(OUT_DIR)/* $(INITRD_DIR) $(STR_MAKER_DIR) mo-files pot-files
+	rm -rf $(INITRD_DIR) $(STR_MAKER_DIR) mo-files pot-files
 
 depclean: clean
 	rm -rf Src/initrd/* make-xlat-files-err.log
