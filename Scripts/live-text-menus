@@ -27,15 +27,15 @@ options_menu() {
 
 persist_menu() {
     pfm   "$(gettext Default)"
-    pfm   "persist-all"      "$(gettext "Both root and home persistence (uses persist-save)")"
-    pfm   "persist-root"     "$(gettext "Only root persistence (uses persist-save)")"
-    pfm   "persist-static"   "$(gettext "Home and root persistence (slower but no persist-save)")"
-    pfm   "persist-home"     "$(gettext "Only home persistence")"
-    pfm   "frugal-persist"   "$(gettext "Frugal with both root and home persistence")"
-    pfm   "frugal-root"      "$(gettext "Frugal with only root persistence")"
-    pfm   "frugal-static"    "$(gettext "Frugal with home and static root persistence")"
-    pfm   "frugal-home"      "$(gettext "Frugal with only home persistence")"
-    pfm   "frugal-only"      "$(gettext "Only Frugal, no persistence")"
+    pfm   "persist_all"      "$(gettext "Both root and home persistence (uses persist-save)")"
+    pfm   "persist_root"     "$(gettext "Only root persistence (uses persist-save)")"
+    pfm   "persist_static"   "$(gettext "Home and root persistence (slower but no persist-save)")"
+    pfm   "persist_home"     "$(gettext "Only home persistence")"
+    pfm   "frugal_persist"   "$(gettext "Frugal with both root and home persistence")"
+    pfm   "frugal_root"      "$(gettext "Frugal with only root persistence")"
+    pfm   "frugal_static"    "$(gettext "Frugal with home and static root persistence")"
+    pfm   "frugal_home"      "$(gettext "Frugal with only home persistence")"
+    pfm   "frugal_only"      "$(gettext "Only Frugal, no persistence")"
 }
 
 save_menu() {
