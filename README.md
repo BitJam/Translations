@@ -291,4 +291,29 @@ if you want the latest translations and you are not just testing:
     make import initrd export
 
 
+Here are instructions on how to update the options menu:
+
+1) In antiX-Gfxboot
+    1.1) Edit src/menu_options_inc
+    1.2) Edit Input/$DISTRO/isolinux/options.men
+    1.3) Edit Input/$DISTRO/isolinux/gfxboot.cfg (if needed)
+    1.4) Run Tools/make-text-menu Options . syslinux-cpio/options.men
+    1.5) Ignore Options.menu.
+    1.6) Edit Options.data and copy it to 
+             ../Live-initrd/live/custom/$DISTRO/menus/
+
+2) In the Translate directory:
+    2.1) Run Scripts/pull-po  (optional)
+    2.2) Edit Scripts/live-text-menus
+    2.3) Run "make import initrd export"
+    2.4) Run Scripts/push-pot (optional) 
+    2.5) cp Initrd/live/custom/antiX/menus/*.menu to
+             ../Live-initrd/live/custom/$DISTRO/menus/
+
+3) Make sure the numbering in Options.menu matches the numbers in
+   Options.data.  If they don't match, rinse and repeat.
+
+4) Once they match and are correct, run the following in
+   the Translation directory once again:
+   4.1) Run make import initrd export
 
