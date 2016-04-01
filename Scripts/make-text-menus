@@ -187,7 +187,7 @@ output_to() {
 
     if [ -n "$file" ]; then
         mkdir -p $(dirname $file)
-        "$@" > $file
+        "$@"  | sed -r 's/ +$//' > $file
     else
         "$@"
     fi
