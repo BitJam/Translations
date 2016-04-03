@@ -31,7 +31,7 @@ DEFAULT="%DEFAULT%"
 MO_DIR=mo-files
 PROJECT=antix-development
 
-MENU_LIST="Options Persist Save"
+MENU_LIST="options persist save"
 
 TRANS_DIR=tx
 
@@ -45,9 +45,9 @@ Usage:  $ME [options] <command>
 
 Commands:
   master    Create a set of translated menus for all of the below
-  Options   Create an Options menu
-  Persist   Create a Persist menu
-  Save      Create a Save menu
+  options   Create an options menu
+  persist   Create a persist menu
+  save      Create a save menu
 
 Options:
   -d  --dir=<dir>           Create menus under the <dir> directory
@@ -107,10 +107,10 @@ main() {
     local cnt=1
     case $command in
          master) do_master                          ;;
-        Options) output_to "$OUT_FILE" options_menu ;;
-        Persist) output_to "$OUT_FILE" persist_menu ;;
-           Save) output_to "$OUT_FILE" save_menu    ;;
-              *) fatal "Uknown command: $command"   ;;
+        options) output_to "$OUT_FILE" options_menu ;;
+        persist) output_to "$OUT_FILE" persist_menu ;;
+           save) output_to "$OUT_FILE" save_menu    ;;
+              *) fatal "Unknown command: $command"   ;;
     esac
 }
 
