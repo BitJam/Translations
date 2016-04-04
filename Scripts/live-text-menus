@@ -1,11 +1,4 @@
 options_menu() {
-#-----------------------------------------------------------------------------
-# TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING
-#
-# Please do not translate yet
-#
-# TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING TESTING
-#-----------------------------------------------------------------------------
     pfm   "$(gettext Default)"
     pfm   "checkmd5"         "$(gettext "Check integrity of the live media")"
     pfm   "checkfs"          "$(gettext "Check LiveUSB ext2/3/4 and persistent file systems")"
