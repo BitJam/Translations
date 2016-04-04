@@ -10,12 +10,4 @@ live-umount
 live-usb-save
 persist-autosave
 persist-password
-
 live-text-menus
-
-# persist-config
-# persist-makefs
-
-# persist-save
-# remaster-me
-# toram-eject
