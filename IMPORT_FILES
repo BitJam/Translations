@@ -4,7 +4,6 @@
 # /bin/tsplash
 /etc/init.d/live-L10n
 /etc/init.d/live-disable-services
-/etc/init.d/live-hwclock
 /etc/init.d/live-init
 /etc/init.d/live-restore-services
 /etc/init.d/live-usb-save

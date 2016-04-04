@@ -1,6 +1,5 @@
 live-bootloader
 live-disable-services
-live-hwclock
 live-init
 live-init-utils
 live-initrd-init

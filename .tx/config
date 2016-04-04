@@ -97,10 +97,3 @@ file_filter = tx/antix-development.live-text-menus/<lang>.po
 source_file = pot-files/live-text-menus.pot
 source_lang = en
 type = PO
-
-[antix-development.live-hwclock]
-file_filter = tx/antix-development.live-hwclock/<lang>.po
-source_file = pot-files/live-hwclock.pot
-source_lang = en
-type = PO
-
