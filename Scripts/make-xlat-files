@@ -241,10 +241,11 @@ main() {
                 pretend mkdir -p $(dirname $xlat_file)
 
                 [ -z "$PRETEND" -a -z "$FULL" ] \
-                    && LANGUAGE=$lang $str_maker | sort -u  | comm -23 - $en_file > $xlat_file
+                    && LANGUAGE=$lang $str_maker | sort -u  | comm -23 - $en_file \
+                        | sed -r 's/ +"$/"/' > $xlat_file
 
                 [ -z "$PRETEND" -a -n "$FULL" ] \
-                    && LANGUAGE=$lang $str_maker | sort -u > $xlat_file
+                    && LANGUAGE=$lang $str_maker | sort -u | sed -r 's/ +"$/"/' > $xlat_file
 
                 [ -n "$PRETEND" -a -n "$VERY_VERBOSE" ] \
                     && echo "LANGUAGE=$lang $str_maker | sort -u | comm -23 - $en_file > $xlat_file"
@@ -308,7 +309,7 @@ prep_xlat() {
         vsay "> $en_file"
         pretend mkdir -p $(dirname $en_file)
         if [ -z "$PRETEND" ]; then
-            $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file | sort -u > $en_file
+            $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file | sort -u | sed -r 's/ +"$/"/' > $en_file
         else
             pretend $CMD_REPLACE $PLAIN_OPTS $init_opt $src_file
         fi
