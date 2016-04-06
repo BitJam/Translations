@@ -1,5 +1,7 @@
 SHELL           := /bin/bash
 
+FORCE           :=
+
 DISTRO          := antiX
 PREFIX          :=
 TRANS_DIR       := tx
@@ -122,7 +124,7 @@ install-mo:
 initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
-	$(CMD_MAKE_XLAT) --verbose $(INITRD_SRC)
+	$(CMD_MAKE_XLAT) $(FORCE) --verbose $(INITRD_SRC)
 	$(CMD_TEXT_MENUS) --verbose --dir=Initrd/live/custom/$(DISTRO)/menus master
 
 force-initrd:
@@ -142,6 +144,7 @@ bump:
 		  sed -r -i "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/" $(LIVE_INIT_SRC)
 
 validate:
+	$(CMD_MAKE_XLAT) --full $(FORCE) --verbose $(INITRD_SRC)
 	$(CMD_VALIDATE) $(INITRD_XLAT_DIR)
 
 #initrd: Src/initrd/init.src
