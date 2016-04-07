@@ -105,6 +105,11 @@ validate_xlat() {
         return 0
     fi
 
+    if [ -z "${file##*/ja/*}" -o -z "${file##*/ja_JP/*}" ]; then
+        vsay "Skipping Japanese translation: $file"
+        return 0
+    fi
+
     local en_file=$(dirname $file)/../en/$(basename $file)
     CHECKED=$((CHECKED + 1))
     if egrep -vq "^_[A-Za-z0-9_]+_=" $file; then
