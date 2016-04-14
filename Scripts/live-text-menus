@@ -14,6 +14,7 @@ options_menu() {
     pfm   "hwclock=local"    "$(gettext "Hardware clock uses local time (Windows systems)")"
     pfm   "private"          "$(gettext "Change passwords before booting")"
     pfm   "nostore"          "$(gettext "Disable LiveUSB-Storage feature")"
+    pfm   "dostore"          "$(gettext "Enable LiveUSB-Storage feature")"
     pfm   "savestate"        "$(gettext "Save some files across reboots (LiveUSB only)")"
     pfm   "nosavestate"      "$(gettext "Don't save files across reboots (LiveUSB only)")"
 }
