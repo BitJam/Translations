@@ -19,15 +19,15 @@ INITRD_XLAT_DIR := $(INITRD_DIR)/live/locale/xlat
 
 STR_MAKER_DIR   := string-maker
 
-SCRIPT_DIR      := Scripts
+SCRIPTS_DIR     := Scripts
 STD_OPTS        := 
-CMD_MAKE_XLAT   := $(SCRIPT_DIR)/make-xlat-files $(STD_OPTS)
-CMD_MAKE_MO     := $(SCRIPT_DIR)/make-xlat-files --mo-only
+CMD_MAKE_XLAT   := $(SCRIPTS_DIR)/make-xlat-files $(STD_OPTS)
+CMD_MAKE_MO     := $(SCRIPTS_DIR)/make-xlat-files --mo-only
 CMD_MAKE_MO     += --domains $(DOMAINS_FILE)
 
-CMD_TEXT_MENUS  := $(SCRIPT_DIR)/make-text-menus
-CMD_VALIDATE    := $(SCRIPT_DIR)/validate-xlat
-CMD_REPLACE     := $(SCRIPT_DIR)/replace-strings
+CMD_TEXT_MENUS  := $(SCRIPTS_DIR)/make-text-menus
+CMD_VALIDATE    := $(SCRIPTS_DIR)/validate-xlat
+CMD_REPLACE     := $(SCRIPTS_DIR)/replace-strings
 XGETTEXT        := xgettext --add-comments --language=Shell --no-location
 
 CP_OPTS    		:= --no-dereference --preserve=mode,ownership,links
@@ -89,7 +89,7 @@ all: mo xlat
 force-all: force-xlat force-mo
 
 import:
-	Scripts/import-files $(IMPORT_DIR) Src/initrd IMPORT_FILES
+	$(SCRIPTS_DIR)/import-files $(IMPORT_DIR) Src/initrd IMPORT_FILES
 
 export:
 	mkdir -p $(EXPORT_DIR)
