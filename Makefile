@@ -109,6 +109,12 @@ force-xlat:
 	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) --verbose --force
 
+pull-po:
+	$(SCRIPTS_DIR)/pull-po
+
+push-pot:
+	$(SCRIPTS_DIR)/push-pot
+
 mo:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
