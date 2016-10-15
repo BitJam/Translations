@@ -10,7 +10,7 @@ my $ME = $0; $ME =~ s{.*/}{};
 
 my ($QUIET, $VERBOSE);
 
-my @KEY_WORDS = (qw/echo_live echo_script error pf/);
+my @KEY_WORDS = (qw/echo_live echo_script error pf wq/);
 my @APPEND    = ();
 
 my (@LABELS, %LABEL, %STRING, $UP, $MODE, $STOP_WORDS);

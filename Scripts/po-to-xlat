@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+#
+use Getopt::Long qw(:config no_ignore_case);
+use English;
+use strict;
+use warnings;
+
+my $ME = $0; $ME =~ s{.*/}{};
+
+my ($ENGLISH);
+
+my $USAGE = <<Usage;
+Usage: $ME [options]
+
+Create a .xlat file from a .po file.
+
+Options:
+   -e --english   Produce an English version
+   -h --help      Show this usage
+Usage
+
+GetOptions(
+    "english"      => \$ENGLISH, 
+    "help"         => sub { print $USAGE; exit },
+) or die $USAGE;
+
+
+my ($id, $str);
+
+while (<>) {
+    chomp;
+    m/^msgid "(.*?)"$/ and do {
+        $id = $1;
+        next;
+    };
+
+    m/^"(.*)"$/ and do {
+        $id .= $1;
+        next;
+    };
+
+    m/^msgstr "(.*?)"$/ and do {
+        defined $id or die "missing id for: $str\n";
+        $str = $1;
+        $ENGLISH and $str = "";
+        $str ||= $id;
+        $str or next;
+        my $var = str_to_var($id);
+        print "$var=\"$str\"\n";
+        $id = undef;
+    };
+}
+
+sub str_to_var {
+    my $str = shift;
+    for my $x (qw/X Y Z XX YY ZZ/) {
+        $str =~ s/%-?\d*[a-zA-Z]\b/$x/ or last;
+    }
+    $str =~ s/\\n//g;
+    $str =~ s/'//g;
+    $str =~ s/[^\s\w]+/ /g;
+    #$str =~ s/^[\s]+|[\s+]$//;
+    $str =~ s/^[_\s]+|[_\s]+$//;
+    #$str =~ s/[\s+]/_/g;
+    $str =~ s/[_\s]+/_/g;
+    $str = "_${str}_";
+    return $str
+}

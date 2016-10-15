@@ -56,44 +56,64 @@ type = PO
 file_filter = tx/antix-development.live-usb-save/<lang>.po
 source_file = pot-files/live-usb-save.pot
 source_lang = en
+type = PO
+
+[antix-development.live-usb-storage]
+file_filter = tx/antix-development.live-usb-storage/<lang>.po
+source_file = pot-files/live-usb-storage.pot
+source_lang = en
+type = PO
 
 [antix-development.live-initrd-init]
 file_filter = tx/antix-development.live-initrd-init/<lang>.po
 source_file = pot-files/init.pot
 source_lang = en
+type = PO
 
 [antix-development.persist-password]
 file_filter = tx/antix-development.persist-password/<lang>.po
 source_file = pot-files/persist-password.pot
 source_lang = en
+type = PO
 
 [antix-development.persist-autosave]
 file_filter = tx/antix-development.persist-autosave/<lang>.po
 source_file = pot-files/persist-autosave.pot
 source_lang = en
+type = PO
 
 [antix-development.live-disable-services]
 file_filter = tx/antix-development.live-disable-services/<lang>.po
 source_file = pot-files/live-disable-services.pot
 source_lang = en
+type = PO
 
 [antix-development.live-restore-services]
 file_filter = tx/antix-development.live-restore-services/<lang>.po
 source_file = pot-files/live-restore-services.pot
 source_lang = en
+type = PO
 
 [antix-development.live-init-utils]
 file_filter = tx/antix-development.live-init-utils/<lang>.po
 source_file = pot-files/live-init-utils.sh.pot
 source_lang = en
+type = PO
 
 [antix-development.live-l10n]
 file_filter = tx/antix-development.live-l10n/<lang>.po
 source_file = pot-files/live-L10n.pot
 source_lang = en
+type = PO
 
 [antix-development.live-text-menus]
 file_filter = tx/antix-development.live-text-menus/<lang>.po
 source_file = pot-files/live-text-menus.pot
+source_lang = en
+type = PO
+
+[antix-development.cli-shell-utils]
+file_filter = tx/antix-development.cli-shell-utils/<lang>.po
+source_file = ../cli-shell-utils/cli-shell-utils.pot
 source_lang = en
 type = PO

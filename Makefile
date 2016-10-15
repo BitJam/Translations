@@ -132,7 +132,7 @@ initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_XLAT) $(FORCE) --verbose $(INITRD_SRC)
-	$(CMD_TEXT_MENUS) --verbose --dir=Initrd/live/custom/$(DISTRO)/menus master
+	$(CMD_TEXT_MENUS) --verbose --dir=Initrd/live/menus master
 
 force-initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
@@ -151,8 +151,8 @@ bump:
 		  sed -r -i "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/" $(LIVE_INIT_SRC)
 
 validate:
-	$(CMD_MAKE_XLAT) --full $(FORCE) --verbose $(INITRD_SRC)
-	$(CMD_VALIDATE) $(INITRD_XLAT_DIR)
+	$(CMD_MAKE_XLAT) --full --initrd=Validate --verbose $(INITRD_SRC)
+	$(CMD_VALIDATE) Validate
 
 #initrd: Src/initrd/init.src
 #	$(CMD_REPLACE) --init --mode=replace -o $(INITRD_DIR)/init $<

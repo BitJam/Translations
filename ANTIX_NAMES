@@ -5,3 +5,4 @@ persist-config
 persist-makefs
 persist-save
 toram-eject
+cli-shell-utils

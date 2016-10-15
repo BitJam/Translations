@@ -1,6 +1,6 @@
 #!/bin/bash
 
-       ME=$(basename $0)
+       ME=${0##*/}
 
 DIFF_OPTS="-w -U 0"
   VERBOSE=
@@ -11,7 +11,7 @@ DIFF_OPTS="-w -U 0"
    FAILED=0
    PASSED=0
 
- TEMP_DIR=/tmp/$(basename $0 .sh)
+ TEMP_DIR=/tmp/$(basename "$0" .sh)
 
 usage() {
     local ret=${1:-0}
@@ -80,17 +80,23 @@ main() {
     done
 
     rmdir $TEMP_DIR
-    [ "$QUIET" ] && exit $FAILED
+    [ "$QUIET" ] && my_exit $FAILED
 
     echo
     if [ "$FAILED" -eq 0 ]; then
-        echo "Success!"
+        echo "${green}Success!$nc_co"
     else
-        echo "Failure"
+        echo "${err_co}Failure$nc_co"
     fi
-    plural $CHECKED "$ME: Checked %n file%s"
-    plural $FAILED  "$ME: %n file%s failed"
-    exit $FAILED
+    plural $CHECKED "$ME: Checked $num_co%n$nc_co file%s"
+    plural $FAILED  "$ME: $num_co%n$nc_co failure%s"
+    my_exit $FAILED
+}
+
+my_exit() {
+    local fail_cnt=$1
+    [ $fail_cnt -eq 0 ]
+    exit $?
 }
 
 validate_xlat() {
@@ -113,7 +119,7 @@ validate_xlat() {
     local en_file=$(dirname $file)/../en/$(basename $file)
     CHECKED=$((CHECKED + 1))
     if egrep -vq "^_[A-Za-z0-9_]+_=" $file; then
-        err "Not sourcing suspicious file $file"
+        file_error "Not sourcing suspicious file" "$file"
         FAILED=$((FAILED + 1))
         [ "$QUIET" ] && return 2
         egrep -vn "^_[A-Za-z0-9_]+_=" $file | head -n5
@@ -121,7 +127,7 @@ validate_xlat() {
     fi
 
     if egrep -vq '^_[A-Za-z0-9_]+_="([^"]*\")*[^"]*"' $file; then
-        file_error "Un-escaped double-quote" $file
+        file_error "Un-escaped double-quote in" $file
         FAILED=$((FAILED + 1))
         [ "$QUIET" ] && return 3
         egrep -vn '^_[A-Za-z0-9_]+_="([^"]*\")*[^"]*"' $file | head -n5
@@ -129,7 +135,7 @@ validate_xlat() {
     fi
 
     if ! test -r $en_file && egrep -q '%[^s0-9]' $file; then
-        file_error "Malformed %s" $file
+        file_error "Malformed %s in" $file
         FAILED=$((FAILED + 1))
         [ "$QUIET" ] && return 4
         egrep -n '%[^s0-9]'   $file | head -n5
@@ -156,6 +162,13 @@ validate_xlat() {
 $(sed -n 's/=.*//p' $file)
 Read_Xlat
 
+    # Look at echo "s/\\\\/\\\\\\\\/" to see what this does
+    # This allows backslashed backslashes (and backslashed quotes)
+    # FIXME: I am confused about what is optimal here
+    sed -i -e "s/\\\\/\\\\\\\\/" -e 's/\\"/"/g' $copy2
+    #sed -i -e "s/\\\\/\\\\\\\\/" -e 's/\\"/"/g' $copy1
+    sed -i 's/\\"/"/g' $copy1 $copy2
+
     dbsay "Look for difference between copy and original"
 
     local diff
@@ -164,7 +177,8 @@ Read_Xlat
         vsay "Passed: $file"
     else
         FAILED=$((FAILED + 1))
-        echo "Failed: $file" >&2
+        #echo "Failed copy test: $file" >&2
+        file_error "Failed copy test" "$file"
         if [ "$QUET" ]; then
             :
         elif [ "$SHOW_DIFF" ]; then
@@ -175,7 +189,6 @@ Read_Xlat
     fi
 
     rm $copy1 $copy2
-
 }
 
 test_signature() {
@@ -184,7 +197,7 @@ test_signature() {
     local sig=/tmp/validate-xlat/sig
     local sig_en=/tmp/validate-xlat/sig_en
 
-    sed -r -e 's/[^%]*(%[0-9-]*[sn]?)[^%]*/\1/g' -e 's/^[^%]+$//' $file > $sig
+    sed -r -e 's/[^%]*(%[0-9-]*[sn]?)[^%]*/\1/g' -e 's/^[^%]+$//' $file    > $sig
     sed -r -e 's/[^%]*(%[0-9-]*[sn]?)[^%]*/\1/g' -e 's/^[^%]+$//' $en_file > $sig_en
 
     local lines=$(diff --unchanged-line-format="" --old-line-format="" --new-line-format="%dn|" $sig_en $sig)
@@ -194,9 +207,9 @@ test_signature() {
     fi
 
     echo
-    file_error "Bad \"%s\" signature(s)" $file
+    file_error "Bad \"%s\" signature(s) in" $file
     FAILED=$((FAILED + 1))
-    [ "$QUIET" ] && return 5
+    #[ "$QUIET" ] && return 5
     lines=${lines%|}
     grep -n ^ $file | egrep "^($lines):"
     rm $sig $sig_en
@@ -233,7 +246,6 @@ set_colors() {
      num_co=$white
 }
 
-
 plural() {
     local n="$1"  str="$2"
     case $n in
@@ -268,14 +280,14 @@ error() {
 }
 
 err() {
-    local msg=$(echo "$*" | sed -r "s=/([a-z][a-z])/=/$bold_co\1$red/=")
-    echo -e "$bold_co$ME:$red $msg$nc_co" >&2
+    local msg=$(echo "$*" | sed -r "s=/([a-z][a-z])/=/$bold_co\1$err_co/=")
+    echo -e "$bold_co$ME:$err_co $msg$nc_co" >&2
 }
 
 file_error() {
     local msg=$1  file=$2
-    file=$(echo $file | sed -r "s=.*([a-z][-a-z](_[A-Z][A-Z])?)(/[^/]+\.xlat)$=$bold_co\1$red\3=")
-    echo -e "${red}$msg in: $file$nc_co" >&2
+    file=$(echo $file | sed -r "s=.*([a-z][-a-z](_[A-Z][A-Z])?)(/[^/]+\.xlat)$=$bold_co\1$err_co\3=")
+    echo -e "${err_co}$msg: $file$nc_co" >&2
 }
 
 set_colors

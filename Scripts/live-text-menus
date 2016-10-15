@@ -1,22 +1,27 @@
 options_menu() {
     pfm   "$(gettext Default)"
     pfm   "checkmd5"         "$(gettext "Check integrity of the live media")"
-    pfm   "checkfs"          "$(gettext "Check LiveUSB ext2/3/4 and persistent file systems")"
+    pfm   "checkfs"          "$(gettext "Check LiveUSB and persistence ext2/3/4 file systems")"
     pfm   "toram"            "$(gettext "Copy the compressed file system to RAM")"
     pfm   "from=usb"         "$(gettext "Finish booting from a LiveUSB")"
+    pfm   "from=hd"          "$(gettext "Finish booting from a hard drive")"
     pfm   "nousb2"           "$(gettext "Disable all usb-2 devices while booting")"
-    pfm   "automount"        "$(gettext "Automatically mount devices when plugged in")"
-    pfm   "mount=usb"        "$(gettext "... and mount all usb devices at boot time")"
-    pfm   "mount=all"        "$(gettext "... and mount ALL devices at boot time")"
-    pfm   "mount=off"        "$(gettext "Disable all extra mounting")"
     pfm   "hwclock=ask"      "$(gettext "Have the system help determine the clock setting")"
     pfm   "hwclock=utc"      "$(gettext "Hardware clock uses UTC (Linux-only systems)")"
     pfm   "hwclock=local"    "$(gettext "Hardware clock uses local time (Windows systems)")"
-    pfm   "private"          "$(gettext "Change passwords before booting")"
-    pfm   "nostore"          "$(gettext "Disable LiveUSB-Storage feature")"
-    pfm   "dostore"          "$(gettext "Enable LiveUSB-Storage feature")"
+    pfm   "password"         "$(gettext "Change passwords before booting")"
+    pfm   "nostore"          "$(gettext "Disable LiveUSB-Storage feature (LiveUSB only)")"
+    pfm   "dostore"          "$(gettext "Enable LiveUSB-Storage feature (LiveUSB only)")"
     pfm   "savestate"        "$(gettext "Save some files across reboots (LiveUSB only)")"
     pfm   "nosavestate"      "$(gettext "Don't save files across reboots (LiveUSB only)")"
+}
+
+mount_menu() {
+    pfm   "$(gettext Default)"
+    pfm   "automount"        "$(gettext "Automatically mount devices when plugged in")"
+    pfm   "mount=usb"        "$(gettext "... and mount all usb devices at boot time")"
+    pfm   "mount=all"        "$(gettext "... and mount ALL devices at boot time")"
+    pfm   "mount=off"        "$(gettext "Disable all extra mounting and automounting")"
 }
 
 persist_menu() {

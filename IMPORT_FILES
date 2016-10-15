@@ -7,5 +7,6 @@
 /etc/init.d/live-init
 /etc/init.d/live-restore-services
 /etc/init.d/live-usb-save
+/etc/init.d/live-usb-storage
 /etc/init.d/persist-autosave
 /etc/init.d/persist-password

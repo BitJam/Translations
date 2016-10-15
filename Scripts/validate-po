@@ -1,0 +1,318 @@
+#!/bin/bash
+
+ME=${0##*/}
+MY_DIR=$(readlink -f "$(dirname "$0")")
+
+   PO_TO_XLAT=$MY_DIR/po-to-xlat
+VALIDATE_XLAT=$MY_DIR/validate-xlat
+
+OPTIONAL_PREFIX="tx/antix-development."
+ PROJECT_PREFIX="antix-development."
+
+ WORK_DIR="Validate"
+
+     FCNT=0
+     PCNT=0
+  CHECKED=0
+   FAILED=0
+   PASSED=0
+
+LOG_FILE=$ME.log
+
+PROJECT_LIST="
+alsa-set-default-card
+antix-bash-libs
+cli-shell-utils
+live-disable-services
+live-hwclock
+live-init
+live-init-utils
+live-initrd-init
+live-l10n
+live-remaster
+live-restore-services
+live-umount
+live-usb-save
+live-usb-storage
+persist-autosave
+persist-config
+persist-makefs
+persist-password
+toram-eject
+"
+
+# persist-save
+
+usage() {
+    local ret=${1:-0}
+    cat <<Usage
+Usage: $ME [options] file|directory file|directory ...
+
+Check validity of .po files by converting them to .xlat files and then
+calling the existing validate-xlat script.
+
+Without --force only copy and validate files if the .po files is newer
+than the .xlat file.
+
+If no files or directories are given then validate internal list
+of projects.
+
+Options:
+  -f --force    force validation regardless of timestamps
+  -h --help     show this usage
+  -v --verbose  print project nam and language of each file
+
+Usage
+    exit $ret
+}
+
+eval_argument() {
+    local arg=$1 val=$2
+        case $arg in
+             -force|f) FORCE=true                      ;;
+              -help|h) usage                           ;;
+           -verbose|v) VERBOSE=true                    ;;
+                    *) fatal "Unknown parameter -$arg" ;;
+    esac
+}
+
+takes_param() {
+    case $1 in
+        -help) return 1 ;;
+    esac
+    return 1
+}
+
+main() {
+    local SHIFT SHORT_STACK="cdhir"
+
+    read_params "$@"
+    shift $SHIFT
+
+    echo >> $LOG_FILE
+    (   printf "%60s\n" | tr ' ' '-'
+        echo "$ME: Started $(date)" 
+    ) | tee -a $LOG_FILE
+
+
+    if [ $# -eq 0 ]; then
+        echo "Using built-in project list"
+        set -- $PROJECT_LIST
+    fi
+
+    local input cnt
+    # First validate the inputs and count the files
+    for input; do
+        test -e "$input" || input="$OPTIONAL_PREFIX$input"
+        if test -f "$input"; then
+            cnt=1
+        elif test -d "$input"; then
+            local cnt=$(find "$input" -name "*.po" | wc -l)
+            FNCT=$((FCNT + cnt))
+        else
+            fatal "Could not find '%s' or '%s'" "$input" "$preinput"
+        fi
+        FCNT=$((FCNT + cnt))
+    done
+
+    plural $FCNT "$ME: Will check up to $num_co%n$nc_co file%s\n" \
+        | tee -a $LOG_FILE
+    # plural $PCNT " in $num_co%n$nc_co project%s\n"
+
+    for input; do
+        test -e "$input" || input="$OPTIONAL_PREFIX$input"
+        if test -f "$input"; then
+            validate_file "$input" $count_first
+            continue
+
+        elif ! test -d "$input"; then
+            warn "Expected '%s' to be a file or directory" "$input"
+            continue
+        fi
+
+        while read file; do
+            [ ${#file} -gt 0 ] || continue
+            test -f "$file"    || continue
+            validate_file "$file" $count_first
+        done <<Find_Po
+$(find "$input" -name "*.po" -type f)
+Find_Po
+
+    done
+
+    (   echo
+        if [ "$FAILED" -eq 0 ]; then
+            echo "${green}Success!$nc_co"
+        else
+            echo "${err_co}Failure$nc_co"
+        fi
+
+        plural $CHECKED "$ME: Checked $num_co%n$nc_co file%s\n"
+        plural $FAILED  "$ME: $num_co%n$nc_co failure%s\n"
+        my_exit $FAILED
+    ) | tee -a $LOG_FILE
+}
+
+validate_file() {
+    local po_file=$1  count_first
+    if [ "$count_first" ]; then
+        FCNT=$((FCNT + 1))
+        return
+    fi
+    if ! [ -n "$po_file" -a -z "${po_file%%*.po}" ]; then
+        warn "May not be a .po file: %s" "$po_file"
+        return
+    fi
+
+    if ! grep -q '^msgstr "[^"]' "$po_file"; then
+        #echo "Skipping $po_file"
+        return
+    fi
+
+    local lang=$(basename "$po_file" .po)
+    local proj=$(basename "$(dirname "$po_file")")
+    proj=${proj#$PROJECT_PREFIX}
+
+    local xl_file=$WORK_DIR/$lang/$proj.xlat
+    local en_file=$WORK_DIR/en/$proj.xlat
+    should_copy $po_file $xl_file || return
+
+    [ "$VERBOSE" ] && printf "%12s %s\n" "$proj" "$lang"
+
+    CHECKED=$((CHECKED + 1))
+
+    if ! test -e $en_file; then
+        mkdir -p $(dirname $en_file)
+        $PO_TO_XLAT --english "$po_file" | sort > "$en_file"
+    fi
+
+    mkdir -p "$(dirname "$xl_file")"
+    $PO_TO_XLAT "$po_file" | sort > "$xl_file"
+    $VALIDATE_XLAT --quiet $xl_file 2>&1 | tee -a $LOG_FILE
+    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+        PASSED=$((PASSED + 1))
+    else
+        FAILED=$((FAILED + 1))
+    fi
+}
+
+should_copy() {
+    local sorc=$1  targ=$2
+
+    [ "$FORCE" ] && return 0
+    [ -f $targ ] || return 0
+    local targ_time=$(stat -c %Y $targ)
+    local sorc_time=$(stat -c %Y $sorc)
+    [ $targ_time -lt $sorc_time ] && return 0
+    return 1
+}
+
+plural() {
+    local n="$1"  str="$2"
+    case $n in
+        1) local s=  ies=y   are=is  have=has  were=was;;
+        *) local s=s ies=ies are=are have=have were=were;;
+    esac
+    echo -ne "$str" | sed -e "s/%s/$s/g" -e "s/%ies/$ies/g" -e "s/%are/$are/g" \
+        -e "s/%have/$have/" -e "s/%n/$n/g" -e "s/%were/$were/g"
+}
+
+
+#-------------------------------------------------------------------------------
+# Send "$@".  Expects
+#
+#   SHORT_STACK               variable, list of single chars that stack
+#   fatal(msg)                routine,  fatal("error message")
+#   takes_param(arg)          routine,  true if arg takes a value
+#   eval_argument(arg, [val]) routine,  do whatever you want with $arg and $val
+#
+# Sets "global" variable SHIFT to the number of arguments that have been read.
+#-------------------------------------------------------------------------------
+read_params() {
+    # Most of this code is boiler-plate for parsing cmdline args
+    SHIFT=0
+    # These are the single-char options that can stack
+
+    local arg val
+
+    # Loop through the cmdline args
+    while [ $# -gt 0 -a ${#1} -gt 0 -a -z "${1##-*}" ]; do
+        arg=${1#-}
+        shift
+        SHIFT=$((SHIFT + 1))
+
+        # Expand stacked single-char arguments
+        case $arg in
+            [$SHORT_STACK][$SHORT_STACK]*)
+                if echo "$arg" | grep -q "^[$SHORT_STACK]\+$"; then
+                    local old_cnt=$#
+                    set -- $(echo $arg | sed -r 's/([a-zA-Z])/ -\1 /g') "$@"
+                    SHIFT=$((SHIFT - $# + old_cnt))
+                    continue
+                fi;;
+        esac
+
+        # Deal with all options that take a parameter
+        if takes_param "$arg"; then
+            [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
+            val=$1
+            [ -n "$val" -a -z "${val##-*}" ] \
+                && fatal "Suspicious argument after -$arg: $val"
+            SHIFT=$((SHIFT + 1))
+            shift
+        else
+            case $arg in
+                *=*)  val=${arg#*=} ;;
+                  *)  val="???"     ;;
+            esac
+        fi
+
+        eval_argument "$arg" "$val"
+    done
+}
+
+fatal() {
+    local fmt=$1; shift
+    printf "$ME Error: $fmt\n" "$@" >&2
+    exit 2
+}
+
+warn() {
+    local fmt=$1; shift
+    printf "$ME Warn: $fmt\n" "$@" >&2
+}
+
+set_colors() {
+    local noco=$1  loco=$2
+
+    [ "$noco" ] && return
+
+    local e=$(printf "\e")
+     black="$e[0;30m";    blue="$e[0;34m";    green="$e[0;32m";    cyan="$e[0;36m";
+       red="$e[0;31m";  purple="$e[0;35m";    brown="$e[0;33m"; lt_gray="$e[0;37m";
+   dk_gray="$e[1;30m"; lt_blue="$e[1;34m"; lt_green="$e[1;32m"; lt_cyan="$e[1;36m";
+    lt_red="$e[1;31m"; magenta="$e[1;35m";   yellow="$e[1;33m";   white="$e[1;37m";
+     nc_co="$e[0m";
+
+    cheat_co=$white;      err_co=$red;       hi_co=$white;
+      cmd_co=$white;     from_co=$lt_green;  mp_co=$magenta;   num_co=$magenta;
+      dev_co=$magenta;   head_co=$yellow;     m_co=$lt_cyan;    ok_co=$lt_green;
+       to_co=$lt_green;  warn_co=$yellow;  bold_co=$yellow;
+
+    [ "$loco" ] || return
+
+    from_co=$brown
+      hi_co=$white
+       m_co=$nc_co
+     num_co=$white
+}
+
+my_exit() {
+    local fail_cnt=$1
+    [ $fail_cnt -eq 0 ]
+    exit $?
+}
+
+set_colors
+
+main "$@"

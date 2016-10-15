@@ -7,6 +7,7 @@ pot-files
 Output/*
 Initrd
 junk
+JUNK
 test
 README.mdown
 README.tx
@@ -17,4 +18,5 @@ Src/initrd
 stop1
 stop2
 make-xlate-files-err.log
-
+validate-po.log
+Validate
