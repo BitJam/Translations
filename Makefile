@@ -26,7 +26,7 @@ CMD_MAKE_MO     := $(SCRIPTS_DIR)/make-xlat-files --mo-only
 CMD_MAKE_MO     += --domains $(DOMAINS_FILE)
 
 CMD_TEXT_MENUS  := $(SCRIPTS_DIR)/make-text-menus
-CMD_VALIDATE    := $(SCRIPTS_DIR)/validate-xlat
+CMD_VALIDATE    := $(SCRIPTS_DIR)/validate-po
 CMD_REPLACE     := $(SCRIPTS_DIR)/replace-strings
 XGETTEXT        := xgettext --add-comments --language=Shell --no-location
 
@@ -151,8 +151,7 @@ bump:
 		  sed -r -i "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/" $(LIVE_INIT_SRC)
 
 validate:
-	$(CMD_MAKE_XLAT) --full --initrd=Validate --verbose $(INITRD_SRC)
-	$(CMD_VALIDATE) Validate
+	$(CMD_VALIDATE) --force
 
 #initrd: Src/initrd/init.src
 #	$(CMD_REPLACE) --init --mode=replace -o $(INITRD_DIR)/init $<
