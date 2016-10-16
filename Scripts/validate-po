@@ -60,7 +60,7 @@ of projects.
 Options:
   -f --force    force validation regardless of timestamps
   -h --help     show this usage
-  -v --verbose  print project nam and language of each file
+  -v --verbose  print project name and language of each file
 
 Usage
     exit $ret
