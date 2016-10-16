@@ -148,7 +148,7 @@ Find_Po
         fi
 
         plural $CHECKED "$ME: Checked $num_co%n$nc_co file%s\n"
-        plural $FAILED  "$ME: $num_co%n$nc_co failure%s\n"
+        plural $FAILED  "$ME: $num_co%n$nc_co file%s with failures\n"
         my_exit $FAILED
     ) | tee -a $LOG_FILE
 }
