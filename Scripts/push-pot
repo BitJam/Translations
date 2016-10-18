@@ -3,5 +3,5 @@
 for proj in $(grep -v "^\s*#" RESOURCES | sed 's/\s*#.*//'); do
     full=antix-development.$proj
     echo $full
-    tx0.10 push -r $full -s
+    tx push -r $full -s
 done
