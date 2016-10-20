@@ -34,7 +34,7 @@ CP_OPTS    		:= --no-dereference --preserve=mode,ownership,links
 FIND_OPTS  		:= -not -type d
 
 LIVE_INIT_SRC   := Src/initrd/init.src
-INITRD_SRC      := $(shell find Src/initrd -name "*.src")
+#INITRD_SRC      := $(shell find Src/initrd -name "*.src")
 
 RESOURCES       := $(shell grep -v "^\s*\#" ./RESOURCES | sed "s/\s*\#.*//")
 
@@ -131,13 +131,13 @@ install-mo:
 initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
-	$(CMD_MAKE_XLAT) $(FORCE) --verbose $(INITRD_SRC)
+	$(CMD_MAKE_XLAT) $(FORCE) --verbose $(shell find Src/initrd -name "*.src")
 	$(CMD_TEXT_MENUS) --verbose --dir=Initrd/live/menus master
 
 force-initrd:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
-	$(CMD_MAKE_XLAT) --verbose --force $(INITRD_SRC)
+	$(CMD_MAKE_XLAT) --verbose --force $(shell find Src/initrd -name "*.src")
 
 text-menus:
 	$(CMD_TEXT_MENUS) --verbose --dir=Initrd/live/custom/$(DISTRO)/menus master
@@ -158,7 +158,7 @@ validate:
 #	$(CMD_REPLACE) --init --mode=plain   -o $(INITRD_XLAT_DIR)/en/init.xlat $<
 
 install-initrd:
-	$(CMD_MAKE_XLAT) --verbose --force --stop-at=en $(INITRD_SRC)
+	$(CMD_MAKE_XLAT) --verbose --force --stop-at=en $(shell find Src/initrd -name "*.src")
 	@#$(CMD_MAKE_XLAT) --verbose --force init
 	chmod a+x $(INITRD_DIR)/init $(INITRD_DIR)/bin/*
 	/live/bin/sh -n $(INITRD_DIR)/init
