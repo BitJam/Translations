@@ -24,7 +24,6 @@ alsa-set-default-card
 antix-bash-libs
 cli-shell-utils
 live-disable-services
-live-hwclock
 live-init
 live-init-utils
 live-initrd-init
