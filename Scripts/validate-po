@@ -17,6 +17,8 @@ OPTIONAL_PREFIX="tx/antix-development."
    FAILED=0
    PASSED=0
 
+   FORCE=true
+
 LOG_FILE=$ME.log
 
 PROJECT_LIST="
@@ -50,14 +52,10 @@ Usage: $ME [options] file|directory file|directory ...
 Check validity of .po files by converting them to .xlat files and then
 calling the existing validate-xlat script.
 
-Without --force only copy and validate files if the .po files is newer
-than the .xlat file.
-
 If no files or directories are given then validate internal list
 of projects.
 
 Options:
-  -f --force    force validation regardless of timestamps
   -h --help     show this usage
   -v --verbose  print project name and language of each file
 
@@ -68,7 +66,6 @@ Usage
 eval_argument() {
     local arg=$1 val=$2
         case $arg in
-             -force|f) FORCE=true                      ;;
               -help|h) usage                           ;;
            -verbose|v) VERBOSE=true                    ;;
                     *) fatal "Unknown parameter -$arg" ;;
@@ -90,7 +87,7 @@ main() {
 
     echo >> $LOG_FILE
     (   printf "%60s\n" | tr ' ' '-'
-        echo "$ME: Started $(date)" 
+        echo "$ME: Started $(date)"
     ) | tee -a $LOG_FILE
 
 

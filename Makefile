@@ -151,7 +151,7 @@ bump:
 		  sed -r -i "s/^(\s*VERSION=\".*\.)([0-9]+)\"/\1$$next\"/" $(LIVE_INIT_SRC)
 
 validate:
-	$(CMD_VALIDATE) --force
+	$(CMD_VALIDATE)
 
 #initrd: Src/initrd/init.src
 #	$(CMD_REPLACE) --init --mode=replace -o $(INITRD_DIR)/init $<
