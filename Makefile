@@ -97,7 +97,7 @@ export:
 	cp -a $(IMPORT_DIR)/[a-z]* $(EXPORT_DIR)/
 	cp -a Initrd/* $(EXPORT_DIR)/
 	rm -rf $(EXPORT_DIR)/live/locale/xlat/ja*
-	rm -rf $(EXPORT_DIR)/live/custom/*/menus/*.ja*
+	rm -rf $(EXPORT_DIR)/live/menus/*.ja*
 
 xlat:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
