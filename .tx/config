@@ -117,3 +117,9 @@ file_filter = tx/antix-development.cli-shell-utils/<lang>.po
 source_file = ../cli-shell-utils/cli-shell-utils.pot
 source_lang = en
 type = PO
+
+[antix-development.live-usb-maker-gui]
+file_filter = tx/antix-development.live-usb-maker-gui/<lang>.po
+source_file = ../gui-live-usb-maker/live-usb-maker-gui.pot
+source_lang = en
+type = PO

@@ -6,3 +6,4 @@ persist-makefs
 persist-save
 toram-eject
 cli-shell-utils
+live-usb-maker-gui
