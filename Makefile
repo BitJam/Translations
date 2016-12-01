@@ -110,12 +110,22 @@ force-xlat:
 	$(CMD_MAKE_XLAT) --verbose --force
 
 pull-po:
-	$(SCRIPTS_DIR)/pull-po
+	$(SCRIPTS_DIR)/pull-po | egrep -v "^(Skipping|Done|Pulling)"
 
 push-pot:
 	$(SCRIPTS_DIR)/push-pot
 
 mo:
+	cd ../cli-shell-utils    && ./make-mo
+	cd ../Persist-Scripts    && ./make-mo
+	cd ../gui-live-usb-maker && ./make-mo
+
+all-initrd:
+	make import
+	make initrd
+	make export
+
+old-mo:
 	@[ -d "$(TRANS_DIR)" ] || echo "Can't find directory: $(TRANS_DIR)"
 	@[ -d "$(TRANS_DIR)" ] 
 	$(CMD_MAKE_MO) --verbose
