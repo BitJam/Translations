@@ -116,9 +116,9 @@ push-pot:
 	$(SCRIPTS_DIR)/push-pot
 
 mo:
-	cd ../cli-shell-utils    && ./make-mo
-	cd ../Persist-Scripts    && ./make-mo
-	cd ../gui-live-usb-maker && ./make-mo
+	@cd ../cli-shell-utils    && ./make-mo
+	@cd ../Persist-Scripts    && ./make-mo
+	@cd ../gui-live-usb-maker && ./make-mo
 
 all-initrd:
 	make import
