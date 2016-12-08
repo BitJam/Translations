@@ -33,6 +33,7 @@ live-l10n
 live-remaster
 live-restore-services
 live-umount
+live-usb-maker-gui
 live-usb-save
 live-usb-storage
 persist-autosave
