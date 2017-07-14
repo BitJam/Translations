@@ -1,7 +1,9 @@
 #!/bin/bash
 
-for proj in $(cat RESOURCES ANTIX_NAMES | grep -v "^\s*#" | sed 's/\s*#.*//' \
-    | tr 'A-Z' 'a-z'); do
+for proj in $(cat RESOURCES ANTIX_NAMES \
+    | grep -v "^\s*#" \
+    | sed -e 's/\s*#.*//' -e "s/antiX-bash-libs/antix-bash-libs/"); do
+    #| tr 'A-Z' 'a-z'); do
     full=antix-development.$proj
     echo $full
     tx pull "$@" -r $full -a
