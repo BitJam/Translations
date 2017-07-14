@@ -114,7 +114,7 @@ type = PO
 
 [antix-development.cli-shell-utils]
 file_filter = tx/antix-development.cli-shell-utils/<lang>.po
-source_file = ../cli-shell-utils/cli-shell-utils.pot
+source_file = ../cli-shell-utils/Private/pot/cli-shell-utils.pot
 source_lang = en
 type = PO
 
