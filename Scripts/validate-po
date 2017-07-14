@@ -41,6 +41,12 @@ persist-config
 persist-makefs
 persist-password
 toram-eject
+cli-aptiX
+antiX-cli-cc
+backlight-brightness
+console-font-select
+console-width-select
+console-lib-menu
 "
 
 # persist-save
