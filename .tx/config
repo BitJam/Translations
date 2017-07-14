@@ -126,6 +126,36 @@ type = PO
 
 [antix-development.cli-aptiX]
 file_filter = tx/antix-development.cli-aptiX/<lang>.po
-source_file = ../cli-aptiX/cli-aptiX.pot
+source_file = ../cli-aptiX/Private/pot/cli-aptiX.pot
+source_lang = en
+type = PO
+
+[antix-development.antiX-cli-cc]
+file_filter = tx/antix-development.antiX-cli-cc/<lang>.po
+source_file = ../console-grid-gui/Private/pot/antiX-cli-cc.pot
+source_lang = en
+type = PO
+
+[antix-development.backlight-brightness]
+file_filter = tx/antix-development.backlight-brightness/<lang>.po
+source_file = ../console-grid-gui/Private/pot/backlight-brightness.pot
+source_lang = en
+type = PO
+
+[antix-development.console-font-select]
+file_filter = tx/antix-development.console-font-select/<lang>.po
+source_file = ../console-grid-gui/Private/pot/console-font-select.pot
+source_lang = en
+type = PO
+
+[antix-development.console-width-select]
+file_filter = tx/antix-development.console-width-select/<lang>.po
+source_file = ../console-grid-gui/Private/pot/console-width-select.pot
+source_lang = en
+type = PO
+
+[antix-development.console-lib-menu]
+file_filter = tx/antix-development.console-lib-menu/<lang>.po
+source_file = ../console-grid-gui/Private/pot/lib-menu.pot
 source_lang = en
 type = PO
