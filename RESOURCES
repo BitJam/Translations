@@ -12,6 +12,7 @@ persist-autosave
 persist-password
 live-text-menus
 cli-aptiX
+cli-shell-utils
 antiX-cli-cc
 backlight-brightness
 console-font-select
