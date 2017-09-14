@@ -10,6 +10,8 @@ options_menu() {
     pfm   "hwclock=utc"      "$(gettext "Hardware clock uses UTC (Linux-only systems)")"
     pfm   "hwclock=local"    "$(gettext "Hardware clock uses local time (Windows systems)")"
     pfm   "password"         "$(gettext "Change passwords before booting")"
+    pfm   "wicd"             "$(gettext "Enable wicd service on startup")"
+    pfm   "nowicd"           "$(gettext "Disable wicd service on startup")"
     pfm   "nostore"          "$(gettext "Disable LiveUSB-Storage feature (LiveUSB only)")"
     pfm   "dostore"          "$(gettext "Enable LiveUSB-Storage feature (LiveUSB only)")"
     pfm   "savestate"        "$(gettext "Save some files across reboots (LiveUSB only)")"
