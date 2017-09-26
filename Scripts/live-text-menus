@@ -21,9 +21,7 @@ options_menu() {
 mount_menu() {
     pfm   "$(gettext Default)"
     pfm   "automount"        "$(gettext "Automatically mount devices when plugged in")"
-    pfm   "mount=usb"        "$(gettext "... and mount all usb devices at boot time")"
-    pfm   "mount=all"        "$(gettext "... and mount ALL devices at boot time")"
-    pfm   "mount=off"        "$(gettext "Disable all extra mounting and automounting")"
+    pfm   "noautomount"      "$(gettext "Disable all extra mounting and automounting")"
 }
 
 persist_menu() {
