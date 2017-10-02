@@ -17,4 +17,5 @@ antiX-cli-cc
 backlight-brightness
 console-font-select
 console-width-select
+splash-select
 console-lib-menu
