@@ -47,6 +47,7 @@ backlight-brightness
 console-font-select
 console-width-select
 console-lib-menu
+splash-select
 "
 
 # persist-save
