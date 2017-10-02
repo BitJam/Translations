@@ -148,6 +148,13 @@ source_file = ../console-grid-gui/Private/pot/console-font-select.pot
 source_lang = en
 type = PO
 
+[antix-development.splash-select]
+file_filter = tx/antix-development.splash-select/<lang>.po
+source_file = ../console-grid-gui/Private/pot/splash-select.pot
+source_lang = en
+type = PO
+
+
 [antix-development.console-width-select]
 file_filter = tx/antix-development.console-width-select/<lang>.po
 source_file = ../console-grid-gui/Private/pot/console-width-select.pot
