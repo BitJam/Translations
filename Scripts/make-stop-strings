@@ -1,12 +1,14 @@
 #!/bin/bash
 
+SORT_CMD="env LC_ALL=C sort"
+
 src=Src/initrd/init.src
 NON_STOP="fatal error|non-fatal error|continue"
 STOP_KEYS="vmsg [6-9]|warn|err|\<non_fatal"
 
 egrep "($STOP_KEYS) " $src > stop1
 Scripts/replace-strings --no-stop --mode=strings --init stop1 \
-    | sort -u \
+    | $SORT_CMD -u \
     | egrep -vi "^($NON_STOP)$" > stop2
 
 cat <<Blurb

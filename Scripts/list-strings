@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SORT_CMD="env LC_ALL=C sort"
+
 for full in $(find Src/initrd -name "*.src"); do
     base=$(basename $full .src)
     echo -e "\n>>>>>> $base"
@@ -7,5 +9,5 @@ for full in $(find Src/initrd -name "*.src"); do
         init|tsplash|live-umount) init_opt=--init;;
     esac
     Scripts/replace-strings --mode=strings $init_opt $full \
-        | grep -v  "^#" | sort -u | sed 's/^/  /'
+        | grep -v  "^#" | $SORT_CMD -u | sed 's/^/  /'
 done

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SORT_CMD="env LC_ALL=C sort"
+
 error() {
     echo "$*"
     exit 2
@@ -18,5 +20,5 @@ mkdir -p $new_dir
 for from in $dir/*; do
     file=$(basename $from)
     to=$new_dir/$file
-    grep "^msgid" $from | sort > $to
+    grep "^msgid" $from | $SORT_CMD > $to
 done

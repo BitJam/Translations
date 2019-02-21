@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SORT_CMD="env LC_ALL=C sort"
+
 ME=${0##*/}
 MY_DIR=$(readlink -f "$(dirname "$0")")
 
@@ -189,11 +191,11 @@ validate_file() {
 
     if ! test -e $en_file; then
         mkdir -p $(dirname $en_file)
-        $PO_TO_XLAT --english "$po_file" | sort > "$en_file"
+        $PO_TO_XLAT --english "$po_file" | $SORT_CMD > "$en_file"
     fi
 
     mkdir -p "$(dirname "$xl_file")"
-    $PO_TO_XLAT "$po_file" | sort > "$xl_file"
+    $PO_TO_XLAT "$po_file" |  $SORT_CMD > "$xl_file"
     $VALIDATE_XLAT --quiet $xl_file 2>&1 | tee -a $LOG_FILE
     if [ ${PIPESTATUS[0]} -eq 0 ]; then
         PASSED=$((PASSED + 1))
