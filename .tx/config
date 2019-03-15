@@ -166,3 +166,8 @@ file_filter = tx/antix-development.console-lib-menu/<lang>.po
 source_file = ../console-grid-gui/Private/pot/lib-menu.pot
 source_lang = en
 type = PO
+
+[antix-development.make-wm-menuspot]
+file_filter = tx/antix-development.make-wm-menus/<lang>/LC_MESSAGES/make-wm-menus.po
+source_lang = en
+type = PO
