@@ -123,7 +123,7 @@ PREAMBLE
     close $stop_handle;
 };
 
-$INIT_FORMAT and $STOP_WORDS ||= "log,db_msg,breakpoint,vmsg_if";
+$INIT_FORMAT and $STOP_WORDS ||= "log,db_msg,breakpoint,vmsg_if,awk";
 $STOP_WORDS ||= "#";
 
 my $STOP_REGEX = "^\\s*(:?#|" . join("|", split ",", $STOP_WORDS) . ")";
