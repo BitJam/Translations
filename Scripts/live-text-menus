@@ -25,7 +25,22 @@ mount_menu() {
 }
 
 persist_menu() {
-    pfm   "$(gettext Default)"
+    pfm  "$(gettext Default)"
+    pfm  "persist_all"    "$(gettext "Save root in RAM, save home on disk (save root at shutdown)")"
+    pfm  "persist_root"   "$(gettext "Save root and home in RAM then saved at shutdown")"
+    pfm  "persist_static" "$(gettext "Save root and home on disk with home separate on disk")"
+    pfm  "p_static_root"  "$(gettext "Save root and home on disk together")"
+    pfm  "persist_home"   "$(gettext "Only home persistence")"
+    pfm  "frugal_persist" "$(gettext "Frugal with root in RAM and home on disk")"
+    pfm  "frugal_root"    "$(gettext "Frugal with root and home in RAM then saved at shutdown")"
+    pfm  "frugal_static"  "$(gettext "Frugal with root on disk and home separate on disk")"
+    pfm  "f_static_root"  "$(gettext "Frugal with root and home on disk together")"
+    pfm  "frugal_home"    "$(gettext "Frugal with only home persistence")"
+    pfm  "frugal_only"    "$(gettext "Only Frugal, no persistence")"
+}
+
+old_persist_menu() {
+    pfm  "$(gettext Default)"
     pfm   "persist_all"      "$(gettext "Fast. Saves root and home (uses RAM, saves at shutdown)")"
     pfm   "persist_root"     "$(gettext "Fast. Only saves root (uses RAM, saves at shutdown)")"
     pfm   "persist_static"   "$(gettext "Slow. Saves root and home (no RAM use, saves constantly)")"
