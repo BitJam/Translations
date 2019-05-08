@@ -154,7 +154,6 @@ source_file = ../console-grid-gui/Private/pot/splash-select.pot
 source_lang = en
 type = PO
 
-
 [antix-development.console-width-select]
 file_filter = tx/antix-development.console-width-select/<lang>.po
 source_file = ../console-grid-gui/Private/pot/console-width-select.pot
@@ -169,5 +168,17 @@ type = PO
 
 [antix-development.make-wm-menuspot]
 file_filter = tx/antix-development.make-wm-menus/<lang>/LC_MESSAGES/make-wm-menus.po
+source_lang = en
+type = PO
+
+[antix-development.chroot-rescue]
+file_filter = tx/antix-development.chroot-rescue/<lang>.po
+source_file = ../chroot-rescue/Private/pot/chroot-rescue.pot
+source_lang = en
+type = PO
+
+[antix-development.chroot-rescue-scan]
+file_filter = tx/antix-development.chroot-rescue-scan/<lang>.po
+source_file = ../chroot-rescue/Private/pot/chroot-rescue-scan.pot
 source_lang = en
 type = PO

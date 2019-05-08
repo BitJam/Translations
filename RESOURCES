@@ -19,3 +19,5 @@ console-font-select
 console-width-select
 splash-select
 console-lib-menu
+chroot-rescue
+chroot-rescue-scan
