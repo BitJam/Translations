@@ -6,7 +6,7 @@ DISTRO          := antiX
 PREFIX          :=
 TRANS_DIR       := tx
 
-IMPORT_DIR      := ../Live-initrd
+IMPORT_DIR      := ../live-initrd
 EXPORT_DIR      := ../Xlated-initrd
 
 #INITRD_IDIR	 := ../LiveUSB/14-alpha-2/initrd
