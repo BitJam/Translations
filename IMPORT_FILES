@@ -1,7 +1,7 @@
 /init
 /lib/live-init-utils.sh
 /bin/live-umount
-# /bin/tsplash
+/bin/tsplash
 /etc/init.d/live-L10n
 /etc/init.d/live-disable-services
 /etc/init.d/live-init
