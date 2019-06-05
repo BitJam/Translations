@@ -182,3 +182,9 @@ file_filter = tx/antix-development.chroot-rescue-scan/<lang>.po
 source_file = ../chroot-rescue/Private/pot/chroot-rescue-scan.pot
 source_lang = en
 type = PO
+
+[antix-development.tsplash]
+file_filter = tx/antix-development.tsplash/<lang>.po
+source_file = pot-files/tsplash.pot
+source_lang = en
+type = PO
