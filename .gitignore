@@ -1,6 +1,7 @@
 .*~
 .*.swp
 tx
+tx.orig
 mo-files
 string-maker
 pot-files
