@@ -212,6 +212,7 @@ test_signature() {
     #[ "$QUIET" ] && return 5
     lines=${lines%|}
     grep -n ^ $file | egrep "^($lines):"
+    #gvimdiff $sig_en $sig
     rm $sig $sig_en
 }
 

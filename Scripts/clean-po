@@ -1,0 +1,301 @@
+#!/bin/bash
+
+SORT_CMD="env LC_ALL=C sort"
+
+ME=${0##*/}
+MY_DIR=$(readlink -f "$(dirname "$0")")
+
+NBSP=$'\u0A00'
+
+OPTIONAL_PREFIX="tx/antix-development."
+#OPTIONAL_PREFIX="tx.copy/antix-development."
+ PROJECT_PREFIX="antix-development."
+
+PROJECT_LIST="
+alsa-set-default-card
+antix-bash-libs
+cli-shell-utils
+live-disable-services
+live-init
+live-init-utils
+live-initrd-init
+live-l10n
+live-remaster
+live-restore-services
+live-umount
+live-usb-maker-gui
+live-usb-save
+live-usb-storage
+persist-autosave
+persist-config
+persist-makefs
+persist-password
+toram-eject
+cli-aptiX
+antiX-cli-cc
+backlight-brightness
+console-font-select
+console-width-select
+console-lib-menu
+splash-select
+tsplash
+"
+
+# persist-save
+
+usage() {
+    local ret=${1:-0}
+    cat <<Usage
+Usage: $ME [options] file|directory file|directory ...
+
+Clean up a few common errors in .po files:
+
+    convert "1%s" to "%s"
+    Convert Unicode non-braking space (\u00A0) to space
+    Remove unwanted trailing whitespace
+
+Use "--" to clean the po files for a standard list of projects
+
+Options:
+  -h --help      show this usage
+  -p --pretend   show lines that would change
+  -q --quiet     don't print find lines in pretend mode
+  -v --verbose   print counts of files and lines found
+
+Usage
+    exit $ret
+}
+
+eval_argument() {
+    local arg=$1 val=$2
+        case $arg in
+              -help|h) usage                           ;;
+           -pretend|p) PRETEND=true                    ;;
+             -quiet|q) QUIET=true                      ;;
+           -verbose|v) VERBOSE=true                    ;;
+                    -) STANDARD_PROJECTS=true          ;;
+                    *) fatal "Unknown parameter -$arg" ;;
+    esac
+}
+
+takes_param() {
+    case $1 in
+        -help) return 1 ;;
+    esac
+    return 1
+}
+
+main() {
+    local SHIFT SHORT_STACK="hpqv"
+
+    read_params "$@"
+    shift $SHIFT
+
+
+    if [ $# -eq 0 ]; then
+        if [ "$STANDARD_PROJECTS" ]; then
+            local prog
+            for proj in $PROJECT_LIST; do
+
+                FILE_LIST="$FILE_LIST $(find $OPTIONAL_PREFIX$proj -name "*.po" -type f)"
+            done
+        else
+            usage
+        fi
+    fi
+
+    #echo "$@" ; exit
+
+    for input; do
+        test -e "$input" || input="$OPTIONAL_PREFIX$input"
+        if test -f "$input"; then
+            FILE_LIST="$FILE_LIST $input"
+
+        elif test -d "$input"; then
+            FILE_LIST="$FILE_LIST $(find "$input" -name "*.po" -type f)"
+
+        else
+            warn "Expected '%s' to be a file or directory" "$input"
+        fi
+
+    done
+
+    if verbose; then
+        vsay "Found %8s files" "$(echo $FILE_LIST | wc -w)"
+        vsay " with %8s lines"  "$(cat $FILE_LIST | wc -l)"
+    fi
+
+    clean_up $FILE_LIST
+}
+
+clean_up() {
+
+    local no_print=-i  print
+
+    if verbose; then
+        local no_print=-n print=p cnt tot=0
+        echo
+
+        cnt=$(sed $no_print  s/$'\u00A0'"/ /g$print"  "$@" | wc -l)
+        tot=$((tot + cnt))
+        print_verbose "non-breaking space" $cnt
+        
+        cnt=$(sed $no_print  "s/ 1%s\([ \"]\)/ %s\1/g$print" "$@" | wc -l)
+        tot=$((tot + cnt))
+        print_verbose "1%s --> %s" $cnt
+
+        cnt=$(sed $no_print -r "/^msgid.*[^ ]\"$/,+1s/(msgstr.*[^ ]) +\"$/\1\"/$print" "$@" | wc -l)
+        tot=$((tot + cnt))
+        print_verbose  "extra trailing whitespace" $cnt
+
+        cnt=$(sed $no_print -r "/^msgid.* \"$/,+1s/(msgstr.*[^ ])\"$/\1 \"/$print" "$@" | wc -l)
+        tot=$((tot + cnt))
+        print_verbose  "missing trailing whitespace" $cnt
+
+        cnt=$(sed $no_print -r "s/^msgstr \"[ ]+\"$/msgstr \"\"/$print" "$@" | wc -l)
+        tot=$((tot + cnt))
+        print_verbose  "Whitespace msgstr" $cnt
+
+        echo
+
+        plural "$tot" "Found %n total mistake%s\n"
+    fi
+
+    [ -n "$PRETEND" -a -n "$QUIET" ] && return
+
+    no_print=-i  
+    print=
+    if [ "$PRETEND" ]; then
+        no_print=-n
+        print=p
+    fi
+
+    sed $no_print  s/$'\u00A0'"/ /g$print"         "$@"
+    sed $no_print  "s/ 1%s\([ \"]\)/ %s\1/g$print" "$@"
+    sed $no_print -r "/^msgid.*[^ ]\"$/,+1s/(msgstr.*[^ ]) +\"$/\1\"/$print" "$@"
+    sed $no_print -r "/^msgid.* \"$/,+1s/(msgstr.*[^ ])\"$/\1 \"/$print"     "$@" 
+    sed $no_print -r "s/^msgstr \"[ ]+\"$/msgstr \"\"/$print" "$@" 
+}
+
+print_verbose() {
+    local what=$1  cnt=$2
+    printf "%30s %4s %s\n" "$what" "$cnt" "$(plural $cnt "line%s")"
+}
+
+#-------------------------------------------------------------------------------
+# Send "$@".  Expects
+#
+#   SHORT_STACK               variable, list of single chars that stack
+#   fatal(msg)                routine,  fatal("error message")
+#   takes_param(arg)          routine,  true if arg takes a value
+#   eval_argument(arg, [val]) routine,  do whatever you want with $arg and $val
+#
+# Sets "global" variable SHIFT to the number of arguments that have been read.
+#-------------------------------------------------------------------------------
+read_params() {
+    # Most of this code is boiler-plate for parsing cmdline args
+    SHIFT=0
+    # These are the single-char options that can stack
+
+    local arg val
+
+    # Loop through the cmdline args
+    while [ $# -gt 0 -a ${#1} -gt 0 -a -z "${1##-*}" ]; do
+        arg=${1#-}
+        shift
+        SHIFT=$((SHIFT + 1))
+
+        # Expand stacked single-char arguments
+        case $arg in
+            [$SHORT_STACK][$SHORT_STACK]*)
+                if echo "$arg" | grep -q "^[$SHORT_STACK]\+$"; then
+                    local old_cnt=$#
+                    set -- $(echo $arg | sed -r 's/([a-zA-Z])/ -\1 /g') "$@"
+                    SHIFT=$((SHIFT - $# + old_cnt))
+                    continue
+                fi;;
+        esac
+
+        # Deal with all options that take a parameter
+        if takes_param "$arg"; then
+            [ $# -lt 1 ] && fatal "Expected a parameter after: -$arg"
+            val=$1
+            [ -n "$val" -a -z "${val##-*}" ] \
+                && fatal "Suspicious argument after -$arg: $val"
+            SHIFT=$((SHIFT + 1))
+            shift
+        else
+            case $arg in
+                *=*)  val=${arg#*=} ;;
+                  *)  val="???"     ;;
+            esac
+        fi
+
+        eval_argument "$arg" "$val"
+    done
+}
+
+fatal() {
+    local fmt=$1; shift
+    printf "$ME Error: $fmt\n" "$@" >&2
+    exit 2
+}
+
+warn() {
+    local fmt=$1; shift
+    printf "$ME Warn: $fmt\n" "$@" >&2
+}
+
+vsay() {
+    verbose || return
+    local fmt=$1 ; shift
+    printf "$fmt\n" "$@"
+}
+
+verbose() { [ "$VERBOSE" ] ; return $?; }
+
+plural() {
+    local n="$1"  str="$2"
+    case $n in
+        1) local s=  ies=y   are=is  have=has  were=was;;
+        *) local s=s ies=ies are=are have=have were=were;;
+    esac
+    echo -ne "$str" | sed -e "s/%s/$s/g" -e "s/%ies/$ies/g" -e "s/%are/$are/g" \
+        -e "s/%have/$have/" -e "s/%n/$n/g" -e "s/%were/$were/g"
+}
+
+
+set_colors() {
+    local noco=$1  loco=$2
+
+    [ "$noco" ] && return
+
+    local e=$(printf "\e")
+     black="$e[0;30m";    blue="$e[0;34m";    green="$e[0;32m";    cyan="$e[0;36m";
+       red="$e[0;31m";  purple="$e[0;35m";    brown="$e[0;33m"; lt_gray="$e[0;37m";
+   dk_gray="$e[1;30m"; lt_blue="$e[1;34m"; lt_green="$e[1;32m"; lt_cyan="$e[1;36m";
+    lt_red="$e[1;31m"; magenta="$e[1;35m";   yellow="$e[1;33m";   white="$e[1;37m";
+     nc_co="$e[0m";
+
+    cheat_co=$white;      err_co=$red;       hi_co=$white;
+      cmd_co=$white;     from_co=$lt_green;  mp_co=$magenta;   num_co=$magenta;
+      dev_co=$magenta;   head_co=$yellow;     m_co=$lt_cyan;    ok_co=$lt_green;
+       to_co=$lt_green;  warn_co=$yellow;  bold_co=$yellow;
+
+    [ "$loco" ] || return
+
+    from_co=$brown
+      hi_co=$white
+       m_co=$nc_co
+     num_co=$white
+}
+
+my_exit() {
+    local fail_cnt=$1
+    [ $fail_cnt -eq 0 ]
+    exit $?
+}
+
+set_colors
+
+main "$@"

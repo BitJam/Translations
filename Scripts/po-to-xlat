@@ -24,6 +24,7 @@ GetOptions(
     "help"         => sub { print $USAGE; exit },
 ) or die $USAGE;
 
+my $FILE = $ARGV[0] || "???";
 
 my ($id, $str);
 
@@ -40,8 +41,8 @@ while (<>) {
     };
 
     m/^msgstr "(.*?)"$/ and do {
-        defined $id or die "missing id for: $str\n";
         $str = $1;
+        defined $id or die "missing id for >$str< in file $FILE\n";
         $ENGLISH and $str = "";
         $str ||= $id;
         $str or next;

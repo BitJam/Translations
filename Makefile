@@ -40,7 +40,7 @@ RESOURCES       := $(shell grep -v "^\s*\#" ./RESOURCES | sed "s/\s*\#.*//")
 
 .PHONY:  help help-more all force-all xlat force-xlat mo force-mo validate
 .PHONY:  initrd install-initrd install uninstall clean bump import export
-.PHONY:  push-pot pull-po text-menus
+.PHONY:  push-pot pull-po text-menus clean-po rsync
 
 help:
 	@echo "FIXME: This is old and outdated"
@@ -111,6 +111,13 @@ force-xlat:
 
 pull-po:
 	$(SCRIPTS_DIR)/pull-po | egrep -v "^(Skipping|Done|Pulling)"
+	#rsync -ah --delete tx.orig/ tx/
+
+rsync:
+	rsync -ah --delete tx.orig/ tx/
+
+clean-po:
+	$(SCRIPTS_DIR)/clean-po -v --
 
 push-pot:
 	$(SCRIPTS_DIR)/push-pot

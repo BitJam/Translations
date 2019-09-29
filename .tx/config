@@ -2,189 +2,189 @@
 host = https://www.transifex.com
 
 [antix-development.antix-bash-libs]
-file_filter = tx/antix-development.antix-bash-libs/<lang>.po
+file_filter = tx.orig/antix-development.antix-bash-libs/<lang>.po
 source_lang = en
 type = PO
 
 [antix-development.persist-config]
-file_filter = tx/antix-development.persist-config/<lang>.po
+file_filter = tx.orig/antix-development.persist-config/<lang>.po
 source_lang = en
 type = PO
 
 [antix-development.persist-save]
-file_filter = tx/antix-development.persist-save/<lang>.po
+file_filter = tx.orig/antix-development.persist-save/<lang>.po
 source_lang = en
 type = PO
 
 [antix-development.live-remaster]
-file_filter = tx/antix-development.live-remaster/<lang>.po
+file_filter = tx.orig/antix-development.live-remaster/<lang>.po
 source_lang = en
 type = PO
 
 [antix-development.persist-makefs]
-file_filter = tx/antix-development.persist-makefs/<lang>.po
+file_filter = tx.orig/antix-development.persist-makefs/<lang>.po
 source_lang = en
 type = PO
 
 [antix-development.toram-eject]
-file_filter = tx/antix-development.toram-eject/<lang>.po
+file_filter = tx.orig/antix-development.toram-eject/<lang>.po
 source_lang = en
 
 [antix-development.alsa-set-default-card]
-file_filter = tx/antix-development.alsa-set-default-card/<lang>.po
+file_filter = tx.orig/antix-development.alsa-set-default-card/<lang>.po
 source_lang = en
 
 [antix-development.live-bootloader]
-file_filter = tx/antix-development.live-bootloader/<lang>.po
+file_filter = tx.orig/antix-development.live-bootloader/<lang>.po
 source_file = ../antiX-Gfxboot/po/bootloader.pot
 source_lang = en
 type = PO
 
 [antix-development.live-init]
-file_filter = tx/antix-development.live-init/<lang>.po
+file_filter = tx.orig/antix-development.live-init/<lang>.po
 source_file = pot-files/live-init.pot
 source_lang = en
 type = PO
 
 [antix-development.live-umount]
-file_filter = tx/antix-development.live-umount/<lang>.po
+file_filter = tx.orig/antix-development.live-umount/<lang>.po
 source_file = pot-files/live-umount.pot
 source_lang = en
 type = PO
 
 [antix-development.live-usb-save]
-file_filter = tx/antix-development.live-usb-save/<lang>.po
+file_filter = tx.orig/antix-development.live-usb-save/<lang>.po
 source_file = pot-files/live-usb-save.pot
 source_lang = en
 type = PO
 
 [antix-development.live-usb-storage]
-file_filter = tx/antix-development.live-usb-storage/<lang>.po
+file_filter = tx.orig/antix-development.live-usb-storage/<lang>.po
 source_file = pot-files/live-usb-storage.pot
 source_lang = en
 type = PO
 
 [antix-development.live-initrd-init]
-file_filter = tx/antix-development.live-initrd-init/<lang>.po
+file_filter = tx.orig/antix-development.live-initrd-init/<lang>.po
 source_file = pot-files/init.pot
 source_lang = en
 type = PO
 
 [antix-development.persist-password]
-file_filter = tx/antix-development.persist-password/<lang>.po
+file_filter = tx.orig/antix-development.persist-password/<lang>.po
 source_file = pot-files/persist-password.pot
 source_lang = en
 type = PO
 
 [antix-development.persist-autosave]
-file_filter = tx/antix-development.persist-autosave/<lang>.po
+file_filter = tx.orig/antix-development.persist-autosave/<lang>.po
 source_file = pot-files/persist-autosave.pot
 source_lang = en
 type = PO
 
 [antix-development.live-disable-services]
-file_filter = tx/antix-development.live-disable-services/<lang>.po
+file_filter = tx.orig/antix-development.live-disable-services/<lang>.po
 source_file = pot-files/live-disable-services.pot
 source_lang = en
 type = PO
 
 [antix-development.live-restore-services]
-file_filter = tx/antix-development.live-restore-services/<lang>.po
+file_filter = tx.orig/antix-development.live-restore-services/<lang>.po
 source_file = pot-files/live-restore-services.pot
 source_lang = en
 type = PO
 
 [antix-development.live-init-utils]
-file_filter = tx/antix-development.live-init-utils/<lang>.po
+file_filter = tx.orig/antix-development.live-init-utils/<lang>.po
 source_file = pot-files/live-init-utils.sh.pot
 source_lang = en
 type = PO
 
 [antix-development.live-l10n]
-file_filter = tx/antix-development.live-l10n/<lang>.po
+file_filter = tx.orig/antix-development.live-l10n/<lang>.po
 source_file = pot-files/live-L10n.pot
 source_lang = en
 type = PO
 
 [antix-development.live-text-menus]
-file_filter = tx/antix-development.live-text-menus/<lang>.po
+file_filter = tx.orig/antix-development.live-text-menus/<lang>.po
 source_file = pot-files/live-text-menus.pot
 source_lang = en
 type = PO
 
 [antix-development.cli-shell-utils]
-file_filter = tx/antix-development.cli-shell-utils/<lang>.po
+file_filter = tx.orig/antix-development.cli-shell-utils/<lang>.po
 source_file = ../cli-shell-utils/Private/pot/cli-shell-utils.pot
 source_lang = en
 type = PO
 
 [antix-development.live-usb-maker-gui]
-file_filter = tx/antix-development.live-usb-maker-gui/<lang>.po
+file_filter = tx.orig/antix-development.live-usb-maker-gui/<lang>.po
 source_file = ../gui-live-usb-maker/live-usb-maker-gui.pot
 source_lang = en
 type = PO
 
 [antix-development.cli-aptiX]
-file_filter = tx/antix-development.cli-aptiX/<lang>.po
+file_filter = tx.orig/antix-development.cli-aptiX/<lang>.po
 source_file = ../cli-aptiX/Private/pot/cli-aptiX.pot
 source_lang = en
 type = PO
 
 [antix-development.antiX-cli-cc]
-file_filter = tx/antix-development.antiX-cli-cc/<lang>.po
+file_filter = tx.orig/antix-development.antiX-cli-cc/<lang>.po
 source_file = ../console-grid-gui/Private/pot/antiX-cli-cc.pot
 source_lang = en
 type = PO
 
 [antix-development.backlight-brightness]
-file_filter = tx/antix-development.backlight-brightness/<lang>.po
+file_filter = tx.orig/antix-development.backlight-brightness/<lang>.po
 source_file = ../console-grid-gui/Private/pot/backlight-brightness.pot
 source_lang = en
 type = PO
 
 [antix-development.console-font-select]
-file_filter = tx/antix-development.console-font-select/<lang>.po
+file_filter = tx.orig/antix-development.console-font-select/<lang>.po
 source_file = ../console-grid-gui/Private/pot/console-font-select.pot
 source_lang = en
 type = PO
 
 [antix-development.splash-select]
-file_filter = tx/antix-development.splash-select/<lang>.po
+file_filter = tx.orig/antix-development.splash-select/<lang>.po
 source_file = ../console-grid-gui/Private/pot/splash-select.pot
 source_lang = en
 type = PO
 
 [antix-development.console-width-select]
-file_filter = tx/antix-development.console-width-select/<lang>.po
+file_filter = tx.orig/antix-development.console-width-select/<lang>.po
 source_file = ../console-grid-gui/Private/pot/console-width-select.pot
 source_lang = en
 type = PO
 
 [antix-development.console-lib-menu]
-file_filter = tx/antix-development.console-lib-menu/<lang>.po
+file_filter = tx.orig/antix-development.console-lib-menu/<lang>.po
 source_file = ../console-grid-gui/Private/pot/lib-menu.pot
 source_lang = en
 type = PO
 
 [antix-development.make-wm-menuspot]
-file_filter = tx/antix-development.make-wm-menus/<lang>/LC_MESSAGES/make-wm-menus.po
+file_filter = tx.orig/antix-development.make-wm-menus/<lang>/LC_MESSAGES/make-wm-menus.po
 source_lang = en
 type = PO
 
 [antix-development.chroot-rescue]
-file_filter = tx/antix-development.chroot-rescue/<lang>.po
+file_filter = tx.orig/antix-development.chroot-rescue/<lang>.po
 source_file = ../chroot-rescue/Private/pot/chroot-rescue.pot
 source_lang = en
 type = PO
 
 [antix-development.chroot-rescue-scan]
-file_filter = tx/antix-development.chroot-rescue-scan/<lang>.po
+file_filter = tx.orig/antix-development.chroot-rescue-scan/<lang>.po
 source_file = ../chroot-rescue/Private/pot/chroot-rescue-scan.pot
 source_lang = en
 type = PO
 
 [antix-development.tsplash]
-file_filter = tx/antix-development.tsplash/<lang>.po
+file_filter = tx.orig/antix-development.tsplash/<lang>.po
 source_file = pot-files/tsplash.pot
 source_lang = en
 type = PO
